@@ -124,6 +124,428 @@ Documents → Classification Prompt → DocumentDMO (authority, type, source)
 
 ---
 
+## Concrete Example: Document to DMO Mapping
+
+### Real-World Document Processing
+
+**Input Document:** `GLA_200_Engine_Specs_MY2024_v3.2.pdf`
+
+**Document Content Snippet:**
+```
+Technical Specification: GLA 200 Model Year 2024
+Department: Engineering / Powertrain / Gasoline Engines
+Document ID: ENG-SPEC-GLA200-2024-v3.2
+Status: Approved
+Effective Date: 2024-04-01
+Supersedes: ENG-SPEC-GLA200-2024-v2.8
+
+Engine Specifications:
+- Displacement: 1.33 liters
+- Power Output: 120 kW (163 PS) @ 5,500 rpm
+- Torque: 250 Nm @ 1,620-4,000 rpm
+- Fuel Type: Premium Unleaded (RON 95)
+
+Performance (WLTP validated):
+- Acceleration 0-100 km/h: 7.1 seconds
+- Top Speed: 225 km/h (electronically limited)
+- Combined Fuel Consumption: 6.8 L/100km (WLTP)
+- CO2 Emissions: 154 g/km (WLTP)
+
+Approved by: Dr. Hans Mueller (Chief Powertrain Engineer)
+Validation: See WLTP Test Report TP-2024-GLA200-001 dated 2024-02-15
+```
+
+---
+
+### Step 1: Standard DMOs Leveraged (What We Inherit)
+
+#### Individual DMO (Standard - Inherited)
+```yaml
+Individual:
+  individual_id: "ind-001-hans-mueller"
+  first_name: "Hans"
+  last_name: "Mueller"
+  email: "hans.mueller@company.com"          # Via ContactPointEmail DMO
+  title: "Dr."
+
+  # Standard DMO fields - used as-is
+  party_type: "Individual"
+  party_status: "Active"
+```
+
+#### Party DMO as Department (Standard - Inherited)
+```yaml
+Party:
+  party_id: "dept-001-eng-powertrain"
+  party_type: "Organization"
+  party_name: "Engineering / Powertrain / Gasoline Engines"
+
+  # Standard DMO fields - used as-is
+  party_status: "Active"
+```
+
+#### Product DMO (Standard - Inherited)
+```yaml
+Product:
+  product_id: "prod-001-gla-200"
+  product_name: "GLA 200"
+
+  # Standard DMO fields from ProductCatalog
+  product_code: "GLA200"
+
+  # Standard relationship to Brand DMO
+  brand_id: "brand-001-mercedes-benz"
+
+  # Standard relationship to ProductCategory DMO
+  product_category_id: "cat-001-compact-suv"
+```
+
+---
+
+### Step 2: Custom DMOs Created (Built on DMO Patterns)
+
+#### Document DMO (Custom - Built on Party Pattern)
+```yaml
+DocumentDMO:
+  extends: Party  # Inherits Party structure
+
+  # Standard Party fields (inherited)
+  document_id: "doc-001-gla-spec-v3.2"
+  party_type: "Document"
+  party_status: "Active"
+
+  # Core document fields
+  document_title: "Technical Specification: GLA 200 Model Year 2024"
+  document_uri: "sharepoint://engineering/specs/GLA_200_Engine_Specs_MY2024_v3.2.pdf"
+  document_hash: "a3f2c8d4e9b7a1c6f5e8d2b9a7c4e1f8..."
+
+  # RAG EMBELLISHMENTS (what we add to standard DMO):
+  rag_metadata:
+    document_classification:
+      authority_level: "Official"              # ← EMBELLISHED: Auto-classified via LLM
+      reliability_score: 0.95                  # ← EMBELLISHED: Calculated from metadata
+      content_type: "TechnicalSpec"            # ← EMBELLISHED: Auto-classified via LLM
+      validation_status: "Validated"           # ← EMBELLISHED: Detected from content
+
+    temporal_metadata:
+      created_date: "2024-03-10T10:00:00Z"     # ← EMBELLISHED: Extracted from doc
+      last_modified_date: "2024-03-20T14:30:00Z"
+      effective_date: "2024-04-01T00:00:00Z"   # ← EMBELLISHED: Extracted from "Effective Date"
+      expiration_date: null
+      model_year: 2024                         # ← EMBELLISHED: Extracted from content
+      is_current: true                         # ← EMBELLISHED: Checked via version chain
+
+    source_metadata:
+      source_system: "SharePoint"
+      source_department_id: "dept-001-eng-powertrain"  # ← EMBELLISHED: Linked to Party DMO
+      author_id: null                          # Not explicitly stated
+      approver_ids: ["ind-001-hans-mueller"]   # ← EMBELLISHED: Extracted from "Approved by"
+```
+
+#### ContentFeature DMOs (Custom - New Pattern)
+
+**Feature 1: Acceleration**
+```yaml
+ContentFeatureDMO:
+  feature_id: "feat-001-gla200-accel"
+  feature_name: "acceleration_0_100_kmh"
+  feature_description: "Acceleration from 0 to 100 km/h"
+
+  # RAG-specific metadata
+  feature_metadata:
+    feature_type: "PerformanceClaim"           # ← EMBELLISHED: Auto-classified
+    confidence_score: 0.95                     # ← EMBELLISHED: LLM extraction confidence
+
+    numeric_values:
+      value: 7.1                               # ← EMBELLISHED: Extracted numeric value
+      unit: "seconds"                          # ← EMBELLISHED: Extracted unit
+      context: "Acceleration 0-100 km/h: 7.1 seconds"  # ← EMBELLISHED: Full text
+      condition: null
+
+    validation_status:
+      is_validated: true                       # ← EMBELLISHED: Detected from content
+      validation_reference_text: "WLTP validated"
+      test_standard: "WLTP"                    # ← EMBELLISHED: Extracted standard
+```
+
+**Feature 2: Fuel Consumption**
+```yaml
+ContentFeatureDMO:
+  feature_id: "feat-002-gla200-fuel"
+  feature_name: "fuel_consumption_combined_wltp"
+  feature_description: "Combined fuel consumption (WLTP cycle)"
+
+  feature_metadata:
+    feature_type: "TechnicalSpecification"
+    confidence_score: 0.92
+
+    numeric_values:
+      value: 6.8
+      unit: "L/100km"
+      context: "Combined Fuel Consumption: 6.8 L/100km (WLTP)"
+      condition: "WLTP cycle"
+
+    validation_status:
+      is_validated: true
+      validation_reference_text: "WLTP validated"
+      test_standard: "WLTP"
+```
+
+#### ValidationEvidence DMO (Custom - Built on Case Pattern)
+```yaml
+ValidationEvidenceDMO:
+  extends: Case  # Inherits Case structure for tracking evidence
+
+  validation_id: "valid-001-wltp-gla200"
+  validation_type: "TestReport"
+
+  # RAG-specific validation metadata
+  validation_metadata:
+    test_date: "2024-02-15T00:00:00Z"         # ← EMBELLISHED: Extracted from reference
+    test_facility: "Company Test Center"
+    test_standard: "WLTP"                     # ← EMBELLISHED: Worldwide harmonized Light vehicles Test Procedure
+    test_result: "All performance claims validated"
+    pass_fail_status: "Pass"
+    certification_body: "Internal Engineering"
+
+    measured_values:
+      - metric_name: "acceleration_0_100_kmh"
+        measured_value: 7.1
+        unit: "seconds"
+        tolerance: 0.1
+      - metric_name: "fuel_consumption_combined"
+        measured_value: 6.8
+        unit: "L/100km"
+        tolerance: 0.2
+```
+
+---
+
+### Step 3: Product DMO Embellishments
+
+#### Product DMO (Standard + RAG Embellishments)
+```yaml
+ProductDMO:
+  extends: [ProductCatalog, Brand, ProductCategory]  # Standard DMOs
+
+  # Standard fields (inherited)
+  product_id: "prod-001-gla-200"
+  product_name: "GLA 200"
+  brand_id: "brand-001-mercedes-benz"
+  product_category_id: "cat-001-compact-suv"
+
+  # RAG EMBELLISHMENTS (what we add):
+  rag_metadata:
+    product_hierarchy:
+      brand: "Mercedes-Benz"                   # ← EMBELLISHED: World knowledge
+      model_line: "GLA-Class"                  # ← EMBELLISHED: Product taxonomy
+      model: "GLA 200"
+      variant: "Standard"
+      model_year: 2024
+
+    product_characteristics:
+      country_of_origin: "Germany"             # ← EMBELLISHED: World knowledge
+      manufacturing_plant: "Rastatt"
+      market_segment: "Luxury"
+      target_audience: "Premium compact SUV buyers"
+
+    technical_features:
+      engine_specs:
+        displacement: 1.33
+        displacement_unit: "liters"
+        power_kw: 120
+        power_ps: 163
+        torque_nm: 250
+      # ← EMBELLISHED: Extracted from documents
+```
+
+---
+
+### Step 4: Edge Tables Created (Relationships)
+
+#### Edge 1: AUTHORED_BY
+```cypher
+CREATE (doc:Document {document_id: "doc-001-gla-spec-v3.2"})-[r:AUTHORED_BY {
+  authorship_role: "Approver",                 // ← EMBELLISHED: Role classification
+  contribution_percentage: null,
+  approval_date: "2024-03-20T00:00:00Z"       // ← EMBELLISHED: Extracted date
+}]->(ind:Individual {individual_id: "ind-001-hans-mueller"})
+```
+
+**Why:** Links document to approver for authority attribution
+
+---
+
+#### Edge 2: PUBLISHED_BY
+```cypher
+CREATE (doc:Document {document_id: "doc-001-gla-spec-v3.2"})-[r:PUBLISHED_BY {
+  publication_date: "2024-04-01T00:00:00Z",
+  authority_score: 0.95                       // ← EMBELLISHED: Calculated from dept authority
+}]->(dept:Department {party_id: "dept-001-eng-powertrain"})
+```
+
+**Why:** Establishes department authority (Engineering > Marketing)
+
+---
+
+#### Edge 3: DESCRIBES_PRODUCT
+```cypher
+CREATE (doc:Document {document_id: "doc-001-gla-spec-v3.2"})-[r:DESCRIBES_PRODUCT {
+  model_year: 2024,                           // ← EMBELLISHED: Scopes to model year
+  market_region: "Global",
+  description_completeness: 0.95,             // ← EMBELLISHED: How comprehensive
+  technical_depth: 5                          // ← EMBELLISHED: Level of detail (1-5)
+}]->(prod:Product {product_id: "prod-001-gla-200"})
+```
+
+**Why:** Links document to product for product-scoped queries
+
+---
+
+#### Edge 4: SUPERSEDES
+```cypher
+CREATE (doc_new:Document {document_id: "doc-001-gla-spec-v3.2"})-[r:SUPERSEDES {
+  supersession_date: "2024-04-01T00:00:00Z",  // ← EMBELLISHED: When new version takes effect
+  supersession_reason: "Updated performance data with WLTP validation",
+  backward_compatible: true                   // ← EMBELLISHED: Compatibility flag
+}]->(doc_old:Document {document_id: "doc-001-gla-spec-v2.8"})
+```
+
+**Why:** Version control - ensures only current documents retrieved
+
+---
+
+#### Edge 5: CONTAINS_FEATURE
+```cypher
+CREATE (doc:Document {document_id: "doc-001-gla-spec-v3.2"})-[r:CONTAINS_FEATURE {
+  feature_prominence: 0.9,                    // ← EMBELLISHED: How prominently featured
+  extraction_confidence: 0.95                 // ← EMBELLISHED: LLM confidence
+}]->(feat:ContentFeature {feature_id: "feat-001-gla200-accel"})
+```
+
+**Why:** Enables feature-level retrieval and conflict detection
+
+---
+
+#### Edge 6: VALIDATED_BY
+```cypher
+CREATE (feat:ContentFeature {feature_id: "feat-001-gla200-accel"})-[r:VALIDATED_BY {
+  validation_method: "WLTP Test Procedure",   // ← EMBELLISHED: How validated
+  validation_date: "2024-02-15T00:00:00Z",    // ← EMBELLISHED: When validated
+  validation_confidence: 1.0                  // ← EMBELLISHED: Confidence in validation
+}]->(valid:ValidationEvidence {validation_id: "valid-001-wltp-gla200"})
+```
+
+**Why:** Traces claims back to evidence for verification
+
+---
+
+#### Edge 7: APPLIES_TO (Feature to Product)
+```cypher
+CREATE (feat:ContentFeature {feature_id: "feat-001-gla200-accel"})-[r:APPLIES_TO {
+  is_standard: true,                          // ← EMBELLISHED: Standard vs optional
+  is_optional: false,
+  feature_package: null,
+  market_specific: false
+}]->(prod:Product {product_id: "prod-001-gla-200"})
+```
+
+**Why:** Links features to products for product-specific queries
+
+---
+
+### Step 5: Complete Graph Visualization
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    KNOWLEDGE GRAPH FOR THIS DOCUMENT            │
+└─────────────────────────────────────────────────────────────────┘
+
+    [Individual: Dr. Hans Mueller]
+              ↑
+              │ AUTHORED_BY
+              │ (role: Approver)
+              │
+    [Document: GLA_200_Spec_v3.2]
+         │          │          │
+         │          │          │ CONTAINS_FEATURE
+         │          │          ├─→ [Feature: acceleration_0_100_kmh]
+         │          │          │         │
+         │          │          │         │ VALIDATED_BY
+         │          │          │         └─→ [Validation: WLTP Test Report]
+         │          │          │
+         │          │          └─→ [Feature: fuel_consumption_wltp]
+         │          │                     │
+         │          │                     │ VALIDATED_BY
+         │          │                     └─→ [Validation: WLTP Test Report]
+         │          │
+         │          │ DESCRIBES_PRODUCT
+         │          └─→ [Product: GLA 200]
+         │                    │
+         │                    │ HAS_BRAND
+         │                    ├─→ [Brand: Mercedes-Benz]
+         │                    │
+         │                    │ BELONGS_TO_CATEGORY
+         │                    └─→ [Category: Compact SUV]
+         │
+         │ PUBLISHED_BY
+         └─→ [Department: Engineering/Powertrain]
+                    │
+                    │ HAS_EMPLOYEES
+                    └─→ [Individual: Dr. Hans Mueller]
+
+    Version Chain:
+    [Document: v2.8] ←─SUPERSEDES─ [Document: v3.2 (current)]
+```
+
+---
+
+### Step 6: What This Enables
+
+**Query:** "What is the acceleration of 2024 GLA 200?"
+
+**Graph Walk:**
+1. Resolve entity: Product "GLA 200" (model_year=2024)
+2. Find documents: `DESCRIBES_PRODUCT` → Document v3.2
+3. Filter by authority: `PUBLISHED_BY` → Engineering (authority=5)
+4. Check currency: `SUPERSEDES` chain → v3.2 is current
+5. Extract feature: `CONTAINS_FEATURE` → acceleration_0_100_kmh
+6. Verify validation: `VALIDATED_BY` → WLTP Test Report
+7. Get numeric value: 7.1 seconds
+
+**Answer with Full Traceability:**
+```
+"7.1 seconds (0-100 km/h)"
+
+Source: Engineering Technical Specification v3.2 (Authority: 0.95)
+Department: Engineering / Powertrain / Gasoline Engines
+Approved by: Dr. Hans Mueller (Chief Powertrain Engineer)
+Validated by: WLTP Test Report TP-2024-GLA200-001 dated 2024-02-15
+Effective: 2024-04-01
+Status: Current (supersedes v2.8)
+
+→ Deterministic, authoritative, traceable, validated
+```
+
+---
+
+### Summary: DMO Strategy
+
+| Aspect | Standard DMO | Embellishments | Custom DMO | Edges Created |
+|--------|-------------|----------------|------------|---------------|
+| **Author** | Individual ✓ | + expertise_domains | — | AUTHORED_BY |
+| **Department** | Party ✓ | + authority_level | — | PUBLISHED_BY |
+| **Product** | Product ✓ | + technical_features | — | DESCRIBES_PRODUCT, APPLIES_TO |
+| **Document** | Party pattern | + authority_level<br>+ validation_status<br>+ temporal_metadata | Document DMO | SUPERSEDES, CONTAINS_FEATURE |
+| **Features** | — | — | ContentFeature DMO | VALIDATED_BY, CONTAINS_FEATURE |
+| **Validation** | Case pattern | + test_standard<br>+ measured_values | ValidationEvidence DMO | VALIDATED_BY |
+
+**Key Insight:** We inherit 70% from standard DMOs, embellish 20%, and create only 10% custom — maximizing reuse while enabling deterministic RAG.
+
+**See:** [Complete DMO Schemas](DMO_SCHEMA_REFERENCE.json) | [Ontology Design](RAG_KG_ONTOLOGY_DESIGN.md)
+
+---
+
 ## Example: Deterministic Retrieval in Action
 
 **Query:** "What is the fuel consumption of 2024 GLA 200?"
