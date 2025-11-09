@@ -393,76 +393,313 @@ RETURN r;
 
 ---
 
-## Phase 5: Retrieval Integration (Week 6-8)
+## Phase 5: Hybrid Graph + Vector Retrieval Integration (Week 6-8)
 
-### 5.1 Graph-Grounded Retrieval
+### 5.1 Hybrid Retrieval Architecture
 
-**Objective:** Implement retrieval that uses graph structure + vector similarity
+**Objective:** Implement retrieval that combines graph structure (authority, currency, validation) with vector similarity (semantic relevance)
 
 **Architecture:**
 ```
-Query → Entity Resolution → Graph Walk → Document Filtering → Vector Search → Ranking → Answer
+Query → Entity Resolution
+         ↓
+    ┌────┴────┐
+    │         │
+Graph Filter  Vector Search
+    │         │
+    └────┬────┘
+         ↓
+   Hybrid Scoring → Context Enrichment → LLM Generation
 ```
+
+**Implementation Tasks:**
+- [ ] Implement entity resolution for query understanding
+- [ ] Build graph filtering for authority/currency constraints
+- [ ] Integrate vector similarity search
+- [ ] Create hybrid scoring function combining all signals
+- [ ] Add context enrichment via graph relationships
+- [ ] Implement multiple retrieval strategies (graph-first, vector-first, parallel)
+
+---
+
+### 5.2 Strategy 1: Graph-First Retrieval (Recommended for Deterministic RAG)
+
+**When to Use:** Guaranteed authoritative, validated results required
 
 **Code Example:**
 ```python
-class GraphGroundedRetrieval:
-    def __init__(self, graph_db, vector_db, llm_client):
+class HybridGraphVectorRetrieval:
+    def __init__(self, graph_db, vector_db, embedding_model):
         self.graph = graph_db
         self.vector = vector_db
-        self.llm = llm_client
+        self.embedder = embedding_model
 
-    def retrieve(self, query: str, top_k: int = 5):
+    def graph_first_retrieve(self, query: str, top_k: int = 5):
         # Step 1: Entity resolution
         entities = self.extract_entities(query)
-        # "GLA 200" → Product(id=xyz)
+        # {"product": "GLA 200", "model_year": 2024, "feature": "fuel_consumption"}
 
-        # Step 2: Graph walk to find relevant documents
-        cypher_query = """
-        MATCH (p:Product {product_name: $product_name, model_year: $model_year})
-        MATCH (p)<-[:DESCRIBES_PRODUCT]-(d:Document)
-        WHERE d.is_current = true
-          AND d.authority_level IN ['Official', 'Internal']
-        MATCH (d)-[:PUBLISHED_BY]->(dept:Department)
-        RETURN d, dept.authority_level as dept_authority
-        ORDER BY dept_authority DESC, d.reliability_score DESC
-        """
+        # Step 2: Graph filtering (strict authority/currency constraints)
+        graph_candidates = self.graph.query("""
+            MATCH (p:Product {product_name: $product, model_year: $year})
+            MATCH (p)<-[:DESCRIBES_PRODUCT]-(d:Document)
+            WHERE d.is_current = true
+              AND d.authority_level IN ['Official', 'Internal']
+              AND d.validation_status = 'Validated'
+            MATCH (d)-[:PUBLISHED_BY]->(dept:Department)
+            WHERE dept.department_type IN ['Engineering', 'Product']
+            RETURN
+                d.document_id,
+                d.authority_level,
+                d.reliability_score,
+                d.validation_status,
+                dept.authority_level as dept_authority
+            ORDER BY d.reliability_score DESC
+            LIMIT 50
+        """, product=entities['product'], year=entities['model_year'])
 
-        graph_results = self.graph.query(cypher_query, {
-            'product_name': entities['product'],
-            'model_year': entities.get('model_year')
-        })
+        # Step 3: Vector search within graph-filtered set
+        filtered_ids = [c['d.document_id'] for c in graph_candidates]
+        query_embedding = self.embedder.embed(query)
 
-        # Step 3: Filter to high-authority documents
-        doc_ids = [r['d']['document_id'] for r in graph_results[:20]]
-
-        # Step 4: Vector search within filtered set
-        query_embedding = self.vector.embed(query)
         vector_results = self.vector.search(
             embedding=query_embedding,
-            filter={'document_id': {'$in': doc_ids}},
-            top_k=top_k
+            filter={'document_id': {'$in': filtered_ids}},
+            top_k=top_k * 2  # Get more for re-ranking
         )
 
-        # Step 5: Authority-weighted ranking
-        ranked_results = self.rank_by_authority(vector_results, graph_results)
+        # Step 4: Hybrid scoring combining semantic + authority
+        scored_results = []
+        for v_result in vector_results:
+            g_meta = next(
+                (c for c in graph_candidates if c['d.document_id'] == v_result['document_id']),
+                None
+            )
 
-        return ranked_results
+            if g_meta:
+                # Calculate component scores
+                authority_score = self.calculate_authority_score(g_meta)
+                currency_score = 1.0  # All filtered for is_current
+                validation_score = 1.0 if g_meta['d.validation_status'] == 'Validated' else 0.5
 
-    def rank_by_authority(self, vector_results, graph_results):
-        # Combine vector similarity + authority score
+                # Hybrid score with adaptive weights
+                final_score = self.calculate_hybrid_score(
+                    vector_similarity=v_result['similarity'],
+                    authority_score=authority_score,
+                    currency_score=currency_score,
+                    validation_score=validation_score,
+                    query_type='factual'  # Determined from query classification
+                )
+
+                scored_results.append({
+                    'document_id': v_result['document_id'],
+                    'content': v_result['content'],
+                    'final_score': final_score,
+                    'similarity': v_result['similarity'],
+                    'authority_score': authority_score,
+                    'metadata': g_meta
+                })
+
+        # Step 5: Sort by final hybrid score
+        ranked_results = sorted(scored_results, key=lambda x: x['final_score'], reverse=True)
+
+        # Step 6: Context enrichment via graph
+        top_docs = ranked_results[:top_k]
+        enriched_results = self.enrich_context_with_graph(top_docs)
+
+        return enriched_results
+
+    def calculate_authority_score(self, doc_metadata):
+        """Calculate authority from graph metadata"""
+        authority_map = {'Official': 1.0, 'Internal': 0.7, 'Public': 0.6, 'Draft': 0.5}
+        dept_map = {'Engineering': 1.0, 'Product': 0.9, 'Marketing': 0.6, 'Sales': 0.5}
+
+        base_score = authority_map.get(doc_metadata['d.authority_level'], 0.5)
+        dept_multiplier = dept_map.get(doc_metadata.get('dept_type'), 0.5)
+
+        validation_bonus = 0.1 if doc_metadata.get('d.validation_status') == 'Validated' else 0.0
+
+        return min(base_score * dept_multiplier + validation_bonus, 1.0)
+
+    def calculate_hybrid_score(self, vector_similarity, authority_score,
+                               currency_score, validation_score, query_type='factual'):
+        """
+        Combine all signals with query-adaptive weights
+
+        Weights by query type:
+        - factual: prioritize authority + validation (specs, performance)
+        - conceptual: prioritize semantic similarity (how-to, explanations)
+        - compliance: prioritize authority + currency (legal, regulatory)
+        """
+        weights = {
+            'factual': {'similarity': 0.3, 'authority': 0.35, 'currency': 0.15, 'validation': 0.20},
+            'conceptual': {'similarity': 0.5, 'authority': 0.25, 'currency': 0.15, 'validation': 0.10},
+            'compliance': {'similarity': 0.2, 'authority': 0.35, 'currency': 0.30, 'validation': 0.15}
+        }
+
+        w = weights.get(query_type, weights['factual'])
+
+        final_score = (
+            vector_similarity * w['similarity'] +
+            authority_score * w['authority'] +
+            currency_score * w['currency'] +
+            validation_score * w['validation']
+        )
+
+        return final_score
+
+    def enrich_context_with_graph(self, top_documents):
+        """Add related documents, validation evidence, version context via graph"""
+        enriched = []
+
+        for doc in top_documents:
+            context = {'document': doc}
+
+            # Get supporting documents
+            context['supporting_docs'] = self.graph.query("""
+                MATCH (d:Document {document_id: $doc_id})
+                MATCH (d)<-[:SUPPORTS]-(supporting:Document)
+                WHERE supporting.is_current = true
+                RETURN supporting LIMIT 3
+            """, doc_id=doc['document_id'])
+
+            # Get validation evidence
+            context['validation'] = self.graph.query("""
+                MATCH (d:Document {document_id: $doc_id})
+                MATCH (d)-[:CONTAINS_FEATURE]->(f:ContentFeature)
+                MATCH (f)-[:VALIDATED_BY]->(v:ValidationEvidence)
+                RETURN v, f.feature_name LIMIT 5
+            """, doc_id=doc['document_id'])
+
+            # Get version context
+            context['versions'] = self.graph.query("""
+                MATCH (d:Document {document_id: $doc_id})
+                OPTIONAL MATCH (d)-[:SUPERSEDES]->(older:Document)
+                OPTIONAL MATCH (d)<-[:SUPERSEDES]-(newer:Document)
+                RETURN older, newer
+            """, doc_id=doc['document_id'])
+
+            enriched.append(context)
+
+        return enriched
+```
+
+**Benefits:**
+- ✅ Guaranteed authoritative sources (graph pre-filtering)
+- ✅ Semantic relevance (vector similarity)
+- ✅ Deterministic when using fixed weights and ordering
+- ✅ Full traceability (validation chains, version context)
+
+---
+
+### 5.3 Strategy 2: Vector-First with Graph Re-ranking
+
+**When to Use:** Broader semantic coverage, then filter by authority
+
+**Code Example:**
+```python
+    def vector_first_retrieve(self, query: str, top_k: int = 5):
+        # Step 1: Broad vector search
+        query_embedding = self.embedder.embed(query)
+        vector_results = self.vector.search(
+            embedding=query_embedding,
+            top_k=100  # Cast wide net
+        )
+
+        # Step 2: Enrich each result with graph metadata
         for result in vector_results:
-            doc_id = result['document_id']
-            # Find graph metadata
-            graph_meta = next((r for r in graph_results if r['d']['document_id'] == doc_id), None)
-            if graph_meta:
-                # Authority boost
-                authority_boost = graph_meta['dept_authority'] / 5.0  # Normalize to 0-1
-                result['final_score'] = (result['similarity_score'] * 0.6) + (authority_boost * 0.4)
-            else:
-                result['final_score'] = result['similarity_score']
+            graph_data = self.graph.query("""
+                MATCH (d:Document {document_id: $doc_id})
+                MATCH (d)-[:PUBLISHED_BY]->(dept:Department)
+                OPTIONAL MATCH (d)-[:VALIDATED_BY]->(v:ValidationEvidence)
+                OPTIONAL MATCH (d)-[:SUPERSEDED_BY]->(newer:Document)
+                RETURN
+                    d.authority_level, d.reliability_score,
+                    dept.authority_level as dept_authority,
+                    COUNT(v) as validation_count,
+                    COUNT(newer) as is_superseded
+            """, doc_id=result['document_id'])
 
-        return sorted(vector_results, key=lambda x: x['final_score'], reverse=True)
+            result['authority_score'] = self.calculate_authority_score(graph_data)
+            result['is_current'] = (graph_data['is_superseded'] == 0)
+
+        # Step 3: Hybrid re-ranking
+        for result in vector_results:
+            result['final_score'] = self.calculate_hybrid_score(
+                vector_similarity=result['similarity'],
+                authority_score=result['authority_score'],
+                currency_score=(1.0 if result['is_current'] else 0.5),
+                validation_score=0.8 if result.get('validation_count', 0) > 0 else 0.3
+            )
+
+        # Step 4: Sort and filter
+        ranked_results = sorted(vector_results, key=lambda x: x['final_score'], reverse=True)
+        authoritative_results = [r for r in ranked_results if r['authority_score'] >= 0.7][:top_k]
+
+        return authoritative_results
+```
+
+---
+
+### 5.4 Strategy 3: Parallel Hybrid (Maximum Coverage)
+
+**When to Use:** Exploratory queries needing both authority and breadth
+
+**Code Example:**
+```python
+import asyncio
+
+async def parallel_hybrid_retrieve(self, query: str, top_k: int = 5):
+    # Execute both strategies in parallel
+    graph_results, vector_results = await asyncio.gather(
+        self.graph_first_retrieve(query, top_k),
+        self.vector_first_retrieve(query, top_k)
+    )
+
+    # Merge and deduplicate
+    merged = self.merge_deduplicate(graph_results, vector_results)
+
+    # Final ranking with bonus for graph-first results
+    for result in merged:
+        if result.get('source_path') == 'graph_first':
+            result['final_score'] *= 1.1  # Boost authoritative path
+
+    return sorted(merged, key=lambda x: x['final_score'], reverse=True)[:top_k]
+```
+
+---
+
+### 5.5 Query Type Classification for Adaptive Weights
+
+**Objective:** Automatically adjust retrieval strategy based on query intent
+
+**Code Example:**
+```python
+def classify_query_type(self, query: str) -> str:
+    """Use LLM to classify query type for adaptive weights"""
+    prompt = f"""
+    Classify this query into one type:
+    - factual: specific facts, specs, numbers
+    - conceptual: explanations, how-to
+    - compliance: legal, regulatory, safety
+    - comparison: comparing products/features
+
+    Query: "{query}"
+    Return only the type.
+    """
+
+    query_type = self.llm.generate(prompt).strip()
+    return query_type
+
+# Usage with adaptive retrieval
+query_type = self.classify_query_type(query)
+
+if query_type == 'factual':
+    results = self.graph_first_retrieve(query)  # Prioritize authority
+elif query_type == 'conceptual':
+    results = self.vector_first_retrieve(query)  # Prioritize semantics
+else:  # compliance or comparison
+    results = self.parallel_hybrid_retrieve(query)  # Maximum coverage
 ```
 
 ---

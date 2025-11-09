@@ -113,30 +113,63 @@ Answer: "Around 7.0-7.3 seconds" ❌
   → Not validated
 ```
 
-**Graph-Grounded RAG (Our Approach):**
+**Hybrid Graph + Vector RAG (Our Approach):**
 ```python
 # 1. Entity Resolution
-product = resolve_entity("GLA 200", model_year=2024)
+entities = extract_entities("What is the 0-100 km/h acceleration of 2024 GLA 200?")
+# → {"product": "GLA 200", "model_year": 2024, "feature": "acceleration_0_100_kmh"}
 
-# 2. Graph Walk
-query = """
-MATCH (p:Product {product_id: $product_id})
+# 2. Graph Filtering (Authority + Currency Constraints)
+graph_query = """
+MATCH (p:Product {product_name: $product, model_year: $year})
 MATCH (p)<-[:DESCRIBES_PRODUCT]-(d:Document)
 WHERE d.is_current = true
-  AND d.authority_level = 'Official'
+  AND d.authority_level IN ['Official', 'Internal']
   AND d.validation_status = 'Validated'
-MATCH (d)-[:PUBLISHED_BY]->(dept:Department {type: 'Engineering'})
-MATCH (d)-[:CONTAINS_FEATURE]->(f:ContentFeature {name: 'acceleration_0_100_kmh'})
-MATCH (f)-[:VALIDATED_BY]->(v:ValidationEvidence)
-RETURN f.numeric_value, f.unit, v.test_standard, v.test_date, d.title
+MATCH (d)-[:PUBLISHED_BY]->(dept:Department)
+WHERE dept.department_type IN ['Engineering', 'Product']
+RETURN d.document_id, d.reliability_score, dept.authority_level
+ORDER BY d.reliability_score DESC
+LIMIT 50
 """
 
-result = graph.query(query, product_id=product.id)
+graph_filtered = graph.query(graph_query, product=entities['product'], year=entities['model_year'])
 
-# 3. Answer with Full Traceability
-answer = f"{result.value} {result.unit} (validated by {result.test_standard} on {result.test_date})"
+# 3. Vector Search within Filtered Set (Semantic Relevance)
+query_embedding = embed("What is the 0-100 km/h acceleration of 2024 GLA 200?")
+vector_results = vector_db.search(
+    embedding=query_embedding,
+    filter={'document_id': {'$in': [doc.id for doc in graph_filtered]}},
+    top_k=10
+)
+
+# 4. Hybrid Scoring (Combine Semantic + Authority + Validation)
+for result in vector_results:
+    graph_meta = find_graph_metadata(result.document_id)
+
+    result.final_score = (
+        result.similarity * 0.3 +              # Semantic relevance
+        graph_meta.authority_score * 0.35 +    # Authority (Engineering dept)
+        graph_meta.validation_score * 0.20 +   # Validation (WLTP tested)
+        graph_meta.currency_score * 0.15       # Current version
+    )
+
+ranked_results = sorted(vector_results, key=lambda x: x.final_score, reverse=True)
+
+# 5. Context Enrichment via Graph
+for doc in ranked_results[:5]:
+    doc.validation_evidence = graph.query("""
+        MATCH (d:Document {document_id: $doc_id})
+        MATCH (d)-[:CONTAINS_FEATURE]->(f:ContentFeature {name: 'acceleration_0_100_kmh'})
+        MATCH (f)-[:VALIDATED_BY]->(v:ValidationEvidence)
+        RETURN v.test_standard, v.test_date, f.numeric_value, f.unit
+    """, doc_id=doc.id)
+
+# 6. Generate Answer with Citations
+answer = generate_answer_with_citations(ranked_results)
 # → "7.1 seconds (validated by WLTP on 2024-02-15)"
-#    Source: Engineering Technical Specification v3.2
+#    Source: Engineering Technical Specification v3.2 (Authority: 0.95)
+#    Department: Engineering/Powertrain
 ```
 
 **Result:**
