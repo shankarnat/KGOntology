@@ -531,14 +531,14 @@ Status: Current (supersedes v2.8)
 
 ### Summary: DMO Strategy
 
-| Aspect | Standard DMO | Embellishments | Custom DMO | Edges Created |
-|--------|-------------|----------------|------------|---------------|
-| **Author** | Individual ✓ | + expertise_domains | — | AUTHORED_BY |
-| **Department** | Party ✓ | + authority_level | — | PUBLISHED_BY |
-| **Product** | Product ✓ | + technical_features | — | DESCRIBES_PRODUCT, APPLIES_TO |
-| **Document** | Party pattern | + authority_level<br>+ validation_status<br>+ temporal_metadata | Document DMO | SUPERSEDES, CONTAINS_FEATURE |
-| **Features** | — | — | ContentFeature DMO | VALIDATED_BY, CONTAINS_FEATURE |
-| **Validation** | Case pattern | + test_standard<br>+ measured_values | ValidationEvidence DMO | VALIDATED_BY |
+| Aspect | Standard DMO | Embellishments | Custom DMO | Edges Created | Source → Destination |
+|--------|-------------|----------------|------------|---------------|---------------------|
+| **Author** | Individual ✓ | + expertise_domains | — | AUTHORED_BY | Document → Individual |
+| **Department** | Party ✓ | + authority_level | — | PUBLISHED_BY | Document → Department |
+| **Product** | Product ✓ | + technical_features | — | DESCRIBES_PRODUCT<br>APPLIES_TO | Document → Product<br>ContentFeature → Product |
+| **Document** | Party pattern | + authority_level<br>+ validation_status<br>+ temporal_metadata | Document DMO | SUPERSEDES<br>CONTAINS_FEATURE | Document → Document<br>Document → ContentFeature |
+| **Features** | — | — | ContentFeature DMO | VALIDATED_BY<br>CONTAINS_FEATURE | ContentFeature → ValidationEvidence<br>Document → ContentFeature |
+| **Validation** | Case pattern | + test_standard<br>+ measured_values | ValidationEvidence DMO | VALIDATED_BY | ContentFeature → ValidationEvidence |
 
 **Key Insight:** We inherit 70% from standard DMOs, embellish 20%, and create only 10% custom — maximizing reuse while enabling deterministic RAG.
 
