@@ -124,6 +124,386 @@ Documents → Classification Prompt → DocumentDMO (authority, type, source)
 
 ---
 
+## User Experience: Intelligent Auto-Configuration
+
+### Overview: Zero-Configuration Knowledge Graph Setup
+
+**Key Innovation:** The system intelligently analyzes just **5-10 sample documents** to automatically configure the entire Knowledge Graph structure, DMO mappings, and edge relationships. No manual schema design required.
+
+**User Control:** Users can review, customize, and override any auto-generated configuration through natural language prompts.
+
+---
+
+### Step 1: RAG Pipeline Setup in Intelligent Context (IC)
+
+**What Users Do:**
+
+Navigate to **Intelligent Context → RAG Configuration** and select document sources:
+
+```
+Document Source Selection:
+✓ SharePoint: //engineering/specifications
+✓ Google Drive: Product Documentation folder
+✓ File Systems: /shared/technical-docs
+✓ Other: Confluence, OneDrive, local folders
+
+Sample Size: 5-10 documents (system automatically samples)
+```
+
+**What Happens Behind the Scenes:**
+
+The system ingests a representative sample of documents and performs initial analysis:
+- Detects document types (PDFs, Word docs, presentations)
+- Extracts metadata (authors, departments, dates)
+- Identifies content patterns (specs, marketing, manuals)
+
+**User Interaction:**
+- Simple point-and-click interface
+- No technical knowledge required
+- Takes < 2 minutes to configure
+
+---
+
+### Step 2: Automatic KG Generation via Intelligent Prompts
+
+**What the System Does Automatically:**
+
+The system runs intelligent classification prompts on the sample documents:
+
+```
+Prompt 1: Document Classification
+"Analyze these 5 documents and identify:
+ - Document types (Technical Specification, Marketing Brief,
+   User Manual, Test Report, etc.)
+ - Source departments (Engineering, Marketing, Product, Legal)
+ - Authority levels (Official, Internal, Public, Draft)
+ - Product associations (GLA, C-Class, E-Class, etc.)
+ - Temporal patterns (version numbers, effective dates, supersession)"
+
+Result Generated:
+✓ Document authority hierarchy discovered
+  → Engineering (authority: 0.95) > Product (0.80) > Marketing (0.60)
+✓ Document types auto-classified
+  → TechnicalSpec, TestReport, UserManual, MarketingBrief
+✓ Products identified
+  → GLA 200, GLA 250, C-Class, E-Class
+✓ Version control patterns detected
+  → v3.2 supersedes v2.8 (via "Supersedes:" field)
+```
+
+```
+Prompt 2: Relationship Detection
+"Identify relationships between documents:
+ - Which documents supersede others? (version chains)
+ - Which documents validate claims in other documents?
+ - Which documents describe the same product?
+ - Who authored/approved each document?
+ - Which departments published each document?"
+
+Result Generated:
+✓ 15 SUPERSEDES edges discovered
+✓ 8 VALIDATED_BY edges found
+✓ 23 DESCRIBES_PRODUCT edges created
+✓ 12 AUTHORED_BY relationships extracted
+✓ 10 PUBLISHED_BY department links established
+```
+
+**User Interaction: DMO Selection**
+
+After auto-analysis, the system presents recommendations:
+
+```
+Recommended DMO Mapping:
+
+Standard DMOs Selected (from Salesforce Data Cloud):
+✓ Individual DMO → for authors/approvers
+✓ Party DMO → for departments/organizations
+✓ Product DMO → for product catalog
+✓ Brand DMO → for Mercedes-Benz hierarchy
+✓ ProductCategory DMO → for vehicle categories
+
+Custom DMOs Suggested:
+✓ Document DMO (based on Party pattern)
+  → Stores: authority_level, validation_status, temporal_metadata
+✓ ContentFeature DMO (new)
+  → Stores: extracted specs, numeric values, units, validation links
+✓ ValidationEvidence DMO (based on Case pattern)
+  → Stores: test reports, certifications, measured values
+
+Edge Tables to Create:
+✓ AUTHORED_BY (Document → Individual)
+✓ PUBLISHED_BY (Document → Department)
+✓ DESCRIBES_PRODUCT (Document → Product)
+✓ SUPERSEDES (Document → Document)
+✓ VALIDATED_BY (ContentFeature → ValidationEvidence)
+✓ CONTAINS_FEATURE (Document → ContentFeature)
+✓ APPLIES_TO (ContentFeature → Product)
+
+User Action: Click "Approve" or "Customize"
+```
+
+**Customization via Natural Language:**
+
+Users can refine the configuration using prompts:
+
+```
+User Prompt: "Add a custom DMO for tracking regulatory compliance"
+
+System Response:
+✓ Created ComplianceEvidence DMO (based on Case pattern)
+✓ Added fields: regulation_id, compliance_standard, certification_date
+✓ Created edge: COMPLIES_WITH (Document → ComplianceEvidence)
+✓ Updated KG schema
+
+User Prompt: "Increase authority level for Legal department to 0.90"
+
+System Response:
+✓ Updated Department authority: Legal (0.60 → 0.90)
+✓ Recalculated authority scores for 47 documents
+✓ Updated hybrid scoring weights
+```
+
+**What Gets Created:**
+
+The system automatically generates:
+1. **DMO Schemas** (JSON) for all custom DMOs
+2. **Edge Table Schemas** (SQL/Cypher) for all relationships
+3. **Classification Rules** (prompts) for future document ingestion
+4. **Knowledge Graph Structure** ready for data population
+
+**Time Required:** 3-5 minutes for auto-generation + user review
+
+---
+
+### Step 3: RAG Integration + Visualization (IC Backend)
+
+**What Happens Automatically:**
+
+Once the KG structure is approved, the system:
+
+```
+Backend Processing:
+1. Ingests all documents from selected sources
+2. Applies classification prompts to each document
+3. Extracts entities, features, and relationships
+4. Populates DMO instances in Data Cloud
+5. Creates edge tables in graph database
+6. Generates vector embeddings for semantic search
+7. Links embeddings to KG nodes
+
+Result:
+✓ Complete Knowledge Graph built
+✓ 1,247 documents processed
+✓ 3,512 relationships established
+✓ 892 content features extracted
+✓ 156 validation evidences linked
+```
+
+**KG Filtering in Action:**
+
+The system automatically enhances RAG queries:
+
+```
+Query: "What is the fuel consumption of 2024 GLA 200?"
+
+Without KG (Traditional RAG):
+→ Vector search returns: Marketing blog (6.2 L/100km),
+  User forum (6.5 L/100km), Engineering spec (6.8 L/100km)
+→ LLM sees conflicting values
+→ Answer: "Approximately 6.2-6.8 L/100km" ❌ (inconsistent)
+
+With KG (Our Approach):
+→ Entity resolution: Product = "GLA 200", model_year = 2024
+→ Graph filter: authority_level IN ['Official'], is_current = true
+→ Results: Engineering Spec v3.2 (authority: 0.95)
+→ Feature extraction: fuel_consumption_combined = 6.8 L/100km
+→ Validation check: VALIDATED_BY → WLTP Test Report 2024-02-15
+→ Answer: "6.8 L/100km (combined WLTP cycle)" ✅ (deterministic)
+  Source: Engineering Specification v3.2 (Authority: 0.95)
+  Validated by: WLTP Test Report dated 2024-02-15
+```
+
+**Visualization Dashboard:**
+
+Users can view the Knowledge Graph visually:
+
+```
+KG Visualization:
+- Node Explorer: Browse all Documents, Products, Authors, Features
+- Relationship Viewer: See edge connections (SUPERSEDES chains,
+  VALIDATED_BY links)
+- Authority Heatmap: Color-coded by department authority
+- Version Timeline: Temporal view of document supersession
+- Query Inspector: See how queries traverse the graph
+```
+
+**Time Required:** Automatic (runs in background), results available in 10-30 minutes depending on document count
+
+---
+
+### Step 4: Testing, Validation & Go-Live
+
+**Automatic Testing:**
+
+The system runs validation tests on the KG to ensure quality:
+
+```
+Test Suite 1: Authority Filtering
+✓ Query: "GLA engine specifications"
+  → Returns: 5 engineering docs (authority: 0.95)
+  → Excludes: 12 marketing docs (authority: 0.60)
+  → Result: PASS - Engineering prioritized correctly
+
+✓ Query: "Latest product features"
+  → Returns: 3 docs with source department attribution
+  → Engineering (2 docs), Product (1 doc)
+  → Result: PASS - Source attribution working
+
+✓ Query: "Technical details GLA 200"
+  → Returns: 4 technical specs, 0 marketing materials
+  → Result: PASS - Marketing excluded correctly
+
+Test Suite 2: Version Control
+✓ Query: "Current GLA 200 specifications"
+  → Returns: Only v3.2 (current)
+  → Excludes: v2.8, v2.5, v1.0 (superseded)
+  → Result: PASS - Supersession working correctly
+
+Test Suite 3: Validation Traceability
+✓ Query: "Validated acceleration data"
+  → Returns: Features with VALIDATED_BY edges only
+  → Includes: WLTP test report references
+  → Result: PASS - Validation links established
+
+Test Suite 4: Determinism Check
+✓ Same query run 10 times → Same result 10 times
+✓ Scoring: consistent across all runs
+✓ Result: PASS - Deterministic retrieval confirmed
+```
+
+**Results Dashboard:**
+
+```
+Accuracy Metrics:
+✓ Answer Accuracy: 94% (vs 67% baseline without KG)
+✓ Answer Consistency: 99% (same query → same answer)
+✓ Authority Compliance: 100% (all answers cite authoritative sources)
+✓ Validation Coverage: 87% (claims linked to evidence)
+
+Performance Metrics:
+✓ Query Latency (p95): 340ms (target: <500ms) ✅
+✓ Graph Traversal: 45ms average
+✓ Vector Search: 120ms average
+✓ Hybrid Scoring: 15ms average
+✓ KG Coverage: 96% (docs have relationships) ✅
+```
+
+**NL to SQL/Cypher Editing:**
+
+Advanced users can inspect and edit the generated queries:
+
+```
+User Query: "Show me all validated features for GLA 200"
+
+Auto-Generated Cypher (visible to user):
+MATCH (p:Product {product_name: "GLA 200"})<-[:DESCRIBES_PRODUCT]-(d:Document)
+MATCH (d)-[:CONTAINS_FEATURE]->(f:ContentFeature)
+MATCH (f)-[:VALIDATED_BY]->(v:ValidationEvidence)
+WHERE d.is_current = true
+  AND d.authority_level IN ['Official', 'Internal']
+RETURN f.feature_name, f.numeric_value, f.unit,
+       v.test_standard, v.test_date
+ORDER BY v.test_date DESC
+
+User Action: Click "Edit Query"
+
+User Modified Query:
+MATCH (p:Product {product_name: "GLA 200"})<-[:DESCRIBES_PRODUCT]-(d:Document)
+MATCH (d)-[:CONTAINS_FEATURE]->(f:ContentFeature)
+MATCH (f)-[:VALIDATED_BY]->(v:ValidationEvidence)
+WHERE d.is_current = true
+  AND d.authority_level = 'Official'  // ← Changed: Only Official docs
+  AND v.test_standard = 'WLTP'        // ← Added: Only WLTP validated
+RETURN f.feature_name, f.numeric_value, f.unit,
+       v.test_standard, v.test_date
+ORDER BY v.test_date DESC
+
+System: "Query updated. Re-running..."
+```
+
+**Publishing to Production:**
+
+Once validated, users can publish with one click:
+
+```
+Production Deployment:
+
+Pre-Deployment Checklist:
+✓ KG schema validated
+✓ All edge tables populated
+✓ Authority rules configured
+✓ Test suite passed (100%)
+✓ Performance benchmarks met
+
+Deployment Options:
+→ Gradual rollout: 10% → 50% → 100% traffic
+→ A/B testing: Compare KG-RAG vs baseline
+→ Monitoring: Real-time accuracy tracking
+
+Scaling with Universal DMO (UDMO):
+✓ DMO schemas registered in Data Cloud
+✓ Multi-tenant support enabled
+✓ Cross-org KG federation ready
+✓ Compliance policies enforced
+
+Status: Ready for Production ✅
+```
+
+**User Action:** Click "Publish to Production"
+
+**Time Required:** Testing (1 hour), Review (30 min), Deploy (15 min)
+
+---
+
+### End-to-End Timeline
+
+```
+Total Setup Time: ~2 hours (vs weeks of manual configuration)
+
+Breakdown:
+- Step 1: Document source selection → 2 minutes
+- Step 2: Auto-configuration + review → 5 minutes
+- Step 3: KG generation (background) → 30 minutes
+- Step 4: Testing + validation → 1 hour
+- Step 4: Production deployment → 15 minutes
+
+Result: Production-ready deterministic RAG with full KG grounding
+```
+
+---
+
+### Key User Benefits
+
+**For Business Users:**
+- No technical expertise required
+- Point-and-click setup
+- Natural language customization
+- Immediate accuracy improvements
+
+**For Technical Users:**
+- Full transparency (NL to SQL/Cypher visible)
+- Edit generated queries
+- Custom DMO creation via prompts
+- Advanced tuning controls (authority weights, scoring functions)
+
+**For Administrators:**
+- Automatic schema discovery
+- Version control tracking
+- Compliance enforcement
+- Multi-tenant scalability
+
+---
+
 ## Concrete Example: Document to DMO Mapping
 
 ### Real-World Document Processing
