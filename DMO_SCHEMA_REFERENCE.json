@@ -1,0 +1,856 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RAG Knowledge Graph DMO Schemas",
+  "description": "JSON Schema definitions for RAG-enhanced Data Model Objects grounded in Salesforce Data Cloud DMOs",
+  "version": "1.0.0",
+
+  "definitions": {
+
+    "DocumentDMO": {
+      "type": "object",
+      "description": "Custom DMO extending Party pattern - Represents enterprise documents as first-class entities",
+      "required": ["document_id", "document_title", "document_uri", "party_type", "rag_metadata"],
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for the document"
+        },
+        "document_title": {
+          "type": "string",
+          "description": "Human-readable document title"
+        },
+        "document_uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "Location of the document (URL, file path, etc.)"
+        },
+        "document_hash": {
+          "type": "string",
+          "description": "SHA-256 hash for version change detection",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "party_type": {
+          "type": "string",
+          "const": "Document",
+          "description": "Inherited from Party DMO - always 'Document'"
+        },
+        "party_status": {
+          "type": "string",
+          "enum": ["Active", "Archived", "Deprecated"],
+          "description": "Lifecycle status of the document"
+        },
+        "rag_metadata": {
+          "type": "object",
+          "required": ["document_classification", "temporal_metadata", "source_metadata"],
+          "properties": {
+            "document_classification": {
+              "type": "object",
+              "properties": {
+                "authority_level": {
+                  "type": "string",
+                  "enum": ["Official", "Draft", "Internal", "Public"],
+                  "description": "Authority level determining trust and priority"
+                },
+                "reliability_score": {
+                  "type": "number",
+                  "minimum": 0.0,
+                  "maximum": 1.0,
+                  "description": "Computed reliability score (0.0-1.0)"
+                },
+                "content_type": {
+                  "type": "string",
+                  "enum": [
+                    "TechnicalSpec",
+                    "ProductManual",
+                    "MarketingCollateral",
+                    "TrainingMaterial",
+                    "SalesPresentation",
+                    "PolicyDocument",
+                    "ComplianceDoc"
+                  ],
+                  "description": "Type of content for filtering by use case"
+                },
+                "validation_status": {
+                  "type": "string",
+                  "enum": ["Validated", "Unvalidated", "Pending"],
+                  "description": "Whether content has been validated by evidence"
+                }
+              }
+            },
+            "temporal_metadata": {
+              "type": "object",
+              "properties": {
+                "created_date": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "When the document was created"
+                },
+                "last_modified_date": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Last modification timestamp"
+                },
+                "effective_date": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "When the content becomes valid/effective"
+                },
+                "expiration_date": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "When the content becomes obsolete"
+                },
+                "model_year": {
+                  "type": "integer",
+                  "minimum": 1900,
+                  "maximum": 2100,
+                  "description": "Model year for product documentation"
+                },
+                "is_current": {
+                  "type": "boolean",
+                  "description": "Whether this is the current version"
+                }
+              }
+            },
+            "source_metadata": {
+              "type": "object",
+              "properties": {
+                "source_system": {
+                  "type": "string",
+                  "description": "Origin system (SharePoint, Google Drive, etc.)"
+                },
+                "source_department_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Foreign key to Party DMO (as Department)"
+                },
+                "author_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Foreign key to Individual DMO"
+                },
+                "approver_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "description": "Foreign keys to Individual DMO for approvers"
+                },
+                "contributing_authors": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "description": "Additional authors who contributed"
+                }
+              }
+            }
+          }
+        },
+        "relationships": {
+          "type": "object",
+          "description": "References to related entities (stored as edge tables)",
+          "properties": {
+            "authored_by": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Individual DMO ID"
+            },
+            "approved_by": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Individual DMO IDs"
+            },
+            "owned_by_department": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Party DMO ID (Department)"
+            },
+            "relates_to_products": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Product DMO IDs"
+            },
+            "supersedes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Document DMO IDs this document supersedes"
+            },
+            "superseded_by": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Document DMO IDs that supersede this document"
+            },
+            "supports": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Supporting/reference material Document DMO IDs"
+            },
+            "validated_by": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "ValidationEvidence DMO IDs"
+            }
+          }
+        }
+      }
+    },
+
+    "ProductDMO": {
+      "type": "object",
+      "description": "Embellished standard Product DMO with RAG-specific metadata",
+      "required": ["product_id", "product_name", "brand_id"],
+      "properties": {
+        "product_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique product identifier"
+        },
+        "product_name": {
+          "type": "string",
+          "description": "Product name (e.g., 'GLA 200')"
+        },
+        "brand_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Foreign key to Brand DMO"
+        },
+        "product_category_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Foreign key to ProductCategory DMO"
+        },
+        "rag_metadata": {
+          "type": "object",
+          "properties": {
+            "product_hierarchy": {
+              "type": "object",
+              "properties": {
+                "brand": {
+                  "type": "string",
+                  "description": "Brand name (e.g., 'Mercedes-Benz')"
+                },
+                "model_line": {
+                  "type": "string",
+                  "description": "Model line (e.g., 'GLA-Class')"
+                },
+                "model": {
+                  "type": "string",
+                  "description": "Specific model (e.g., 'GLA 200')"
+                },
+                "variant": {
+                  "type": "string",
+                  "description": "Variant (e.g., 'GLA 200 AMG Line')"
+                },
+                "model_year": {
+                  "type": "integer",
+                  "description": "Model year"
+                }
+              }
+            },
+            "product_characteristics": {
+              "type": "object",
+              "properties": {
+                "country_of_origin": {
+                  "type": "string",
+                  "description": "Manufacturing country"
+                },
+                "manufacturing_plant": {
+                  "type": "string",
+                  "description": "Specific plant location"
+                },
+                "market_segment": {
+                  "type": "string",
+                  "enum": ["Luxury", "Premium", "Mass Market", "Economy"],
+                  "description": "Market positioning"
+                },
+                "target_audience": {
+                  "type": "string",
+                  "description": "Target customer demographic"
+                }
+              }
+            },
+            "technical_features": {
+              "type": "object",
+              "properties": {
+                "engine_specs": {
+                  "type": "object",
+                  "description": "Structured engine specifications"
+                },
+                "dimensions": {
+                  "type": "object",
+                  "description": "Physical dimensions"
+                },
+                "performance_metrics": {
+                  "type": "object",
+                  "description": "Performance data"
+                },
+                "feature_codes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Feature package codes (e.g., 'P01', 'P02')"
+                }
+              }
+            }
+          }
+        },
+        "relationships": {
+          "type": "object",
+          "properties": {
+            "documented_in": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Document DMO IDs"
+            },
+            "belongs_to_category": {
+              "type": "string",
+              "format": "uuid",
+              "description": "ProductCategory DMO ID"
+            },
+            "has_brand": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Brand DMO ID"
+            },
+            "related_products": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Related Product DMO IDs (cross-sell, upsell)"
+            }
+          }
+        }
+      }
+    },
+
+    "DepartmentDMO": {
+      "type": "object",
+      "description": "Embellished Party DMO representing organizational departments",
+      "required": ["party_id", "party_type", "party_name"],
+      "properties": {
+        "party_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier (from Party DMO)"
+        },
+        "party_type": {
+          "type": "string",
+          "const": "Organization",
+          "description": "Party type - always 'Organization' for departments"
+        },
+        "party_name": {
+          "type": "string",
+          "description": "Department name"
+        },
+        "rag_metadata": {
+          "type": "object",
+          "properties": {
+            "department_classification": {
+              "type": "object",
+              "properties": {
+                "department_type": {
+                  "type": "string",
+                  "enum": [
+                    "Engineering",
+                    "Marketing",
+                    "Product",
+                    "Sales",
+                    "Legal",
+                    "Compliance",
+                    "Training"
+                  ],
+                  "description": "Department type for authority determination"
+                },
+                "authority_domains": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Topics this department is authoritative on"
+                },
+                "authority_level": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5,
+                  "description": "Authority level (1-5, where 5 is highest)"
+                }
+              }
+            },
+            "hierarchy": {
+              "type": "object",
+              "properties": {
+                "parent_department_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Parent department ID"
+                },
+                "department_path": {
+                  "type": "string",
+                  "description": "Full path (e.g., '/Engineering/Powertrain/ElectricDrives')"
+                },
+                "level": {
+                  "type": "integer",
+                  "description": "Depth in organizational hierarchy"
+                }
+              }
+            }
+          }
+        },
+        "relationships": {
+          "type": "object",
+          "properties": {
+            "publishes_documents": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Document DMO IDs"
+            },
+            "has_employees": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Individual DMO IDs"
+            },
+            "parent_department": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Parent Department DMO ID"
+            },
+            "child_departments": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Child Department DMO IDs"
+            }
+          }
+        }
+      }
+    },
+
+    "IndividualDMO": {
+      "type": "object",
+      "description": "Embellished standard Individual DMO for authors, approvers, SMEs",
+      "required": ["individual_id", "first_name", "last_name", "email"],
+      "properties": {
+        "individual_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier (from Individual DMO)"
+        },
+        "first_name": {
+          "type": "string",
+          "description": "First name"
+        },
+        "last_name": {
+          "type": "string",
+          "description": "Last name"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address (via Contact Point Email DMO)"
+        },
+        "rag_metadata": {
+          "type": "object",
+          "properties": {
+            "professional_context": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "description": "Job title"
+                },
+                "department_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Foreign key to Department DMO"
+                },
+                "expertise_domains": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Areas of technical expertise"
+                },
+                "certification_level": {
+                  "type": "string",
+                  "description": "Professional certifications"
+                },
+                "seniority_level": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5,
+                  "description": "Seniority for authority weighting (1-5)"
+                }
+              }
+            },
+            "authorship_metrics": {
+              "type": "object",
+              "properties": {
+                "documents_authored": {
+                  "type": "integer",
+                  "description": "Total documents authored"
+                },
+                "documents_approved": {
+                  "type": "integer",
+                  "description": "Total documents approved"
+                },
+                "average_document_authority": {
+                  "type": "number",
+                  "minimum": 0.0,
+                  "maximum": 1.0,
+                  "description": "Average authority score of authored documents"
+                }
+              }
+            }
+          }
+        },
+        "relationships": {
+          "type": "object",
+          "properties": {
+            "works_in": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Department DMO ID"
+            },
+            "authored_documents": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Document DMO IDs"
+            },
+            "approved_documents": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Document DMO IDs"
+            },
+            "subject_matter_expert_for": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Topic tags for SME domains"
+            }
+          }
+        }
+      }
+    },
+
+    "ValidationEvidenceDMO": {
+      "type": "object",
+      "description": "Custom DMO built on Case pattern - Links claims to validation evidence",
+      "required": ["validation_id", "validation_type"],
+      "properties": {
+        "validation_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier"
+        },
+        "validation_type": {
+          "type": "string",
+          "enum": [
+            "TestReport",
+            "QADocument",
+            "CertificationReport",
+            "ComplianceDoc",
+            "PerformanceData"
+          ],
+          "description": "Type of validation evidence"
+        },
+        "validation_metadata": {
+          "type": "object",
+          "properties": {
+            "test_date": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When the test was conducted"
+            },
+            "test_facility": {
+              "type": "string",
+              "description": "Testing facility name"
+            },
+            "test_standard": {
+              "type": "string",
+              "description": "Standard used (ISO, WLTP, EPA, etc.)"
+            },
+            "test_result": {
+              "type": "string",
+              "description": "Summary of test results"
+            },
+            "pass_fail_status": {
+              "type": "string",
+              "enum": ["Pass", "Fail", "Conditional"],
+              "description": "Overall test outcome"
+            },
+            "certification_body": {
+              "type": "string",
+              "description": "Certifying organization"
+            },
+            "measured_values": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metric_name": {
+                    "type": "string"
+                  },
+                  "measured_value": {
+                    "type": "number"
+                  },
+                  "unit": {
+                    "type": "string"
+                  },
+                  "tolerance": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "relationships": {
+          "type": "object",
+          "properties": {
+            "validates_claims_in": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Document DMO IDs"
+            },
+            "validates_features_of": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Product DMO IDs"
+            },
+            "conducted_by": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Department DMO ID"
+            },
+            "approved_by": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Individual DMO ID"
+            }
+          }
+        }
+      }
+    },
+
+    "ContentFeatureDMO": {
+      "type": "object",
+      "description": "Custom DMO - Extracted features/specifications from documents",
+      "required": ["feature_id", "feature_name", "feature_type"],
+      "properties": {
+        "feature_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier"
+        },
+        "feature_name": {
+          "type": "string",
+          "description": "Normalized feature name (e.g., 'acceleration_0_100_kmh')"
+        },
+        "feature_description": {
+          "type": "string",
+          "description": "Human-readable description"
+        },
+        "feature_metadata": {
+          "type": "object",
+          "properties": {
+            "feature_type": {
+              "type": "string",
+              "enum": [
+                "TechnicalSpecification",
+                "PerformanceClaim",
+                "ProductFeature",
+                "SafetyFeature",
+                "ComfortFeature"
+              ]
+            },
+            "confidence_score": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "description": "LLM extraction confidence"
+            },
+            "numeric_values": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "number",
+                  "description": "Numeric value (e.g., 7.1)"
+                },
+                "unit": {
+                  "type": "string",
+                  "description": "Unit of measurement (e.g., 'seconds', 'km/h')"
+                },
+                "context": {
+                  "type": "string",
+                  "description": "Full text context (e.g., '0-100 km/h in 7.1 seconds')"
+                }
+              }
+            },
+            "validation_status": {
+              "type": "object",
+              "properties": {
+                "is_validated": {
+                  "type": "boolean"
+                },
+                "validation_evidence_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Link to ValidationEvidence DMO"
+                }
+              }
+            }
+          }
+        },
+        "relationships": {
+          "type": "object",
+          "properties": {
+            "mentioned_in": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Document DMO IDs"
+            },
+            "applies_to": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Product DMO IDs"
+            },
+            "validated_by": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "ValidationEvidence DMO IDs"
+            },
+            "conflicts_with": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Conflicting ContentFeature DMO IDs"
+            }
+          }
+        }
+      }
+    },
+
+    "DocumentRelationshipDMO": {
+      "type": "object",
+      "description": "Junction table pattern for explicit document relationships",
+      "required": ["relationship_id", "source_document_id", "target_document_id", "relationship_type"],
+      "properties": {
+        "relationship_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "source_document_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Source Document DMO ID"
+        },
+        "target_document_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Target Document DMO ID"
+        },
+        "relationship_type": {
+          "type": "string",
+          "enum": [
+            "Supersedes",
+            "SupersededBy",
+            "Supports",
+            "References",
+            "Validates",
+            "Contradicts",
+            "Updates"
+          ]
+        },
+        "relationship_strength": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Strength/confidence of the relationship"
+        },
+        "effective_date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "auto_detected": {
+              "type": "boolean",
+              "description": "Was this detected by LLM or manually added?"
+            },
+            "detection_confidence": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            "detection_method": {
+              "type": "string",
+              "enum": ["LLM-Analysis", "Metadata-Parsing", "Manual"]
+            }
+          }
+        }
+      }
+    }
+
+  }
+}
