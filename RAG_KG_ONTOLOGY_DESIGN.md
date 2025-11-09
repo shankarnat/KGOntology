@@ -9,14 +9,15 @@
 
 ## Executive Summary
 
-This ontology design leverages Salesforce Data Cloud's 89+ standard Data Model Objects (DMOs) as foundational building blocks, embellishing them with RAG-specific metadata to solve accuracy and consistency challenges. By grounding KG generation in proven DMO schemas, we ensure seamless integration with Salesforce ecosystems while enabling deterministic retrieval.
+This ontology design leverages Salesforce Data Cloud's 89+ standard Data Model Objects (DMOs) as foundational building blocks, embellishing them with RAG-specific metadata to solve accuracy and consistency challenges. By grounding KG generation in proven DMO schemas, we ensure seamless integration with Salesforce ecosystems while enabling deterministic retrieval through a **Hybrid Graph + Vector approach** that combines semantic relevance with authority-based filtering.
 
 ### Key Design Principles
 
 1. **Reuse, Don't Recreate**: Inherit core DMO schemas from Data Cloud
 2. **Embellish, Don't Replace**: Extend DMOs with RAG-specific attributes
 3. **Auto-Generate**: KG creation is automatic via prompt-driven classification
-4. **Deterministic Retrieval**: Structured metadata ensures consistent answers
+4. **Hybrid Retrieval**: Combine graph structure (authority, currency, validation) with vector similarity (semantic relevance)
+5. **Deterministic Answers**: Structured metadata + fixed scoring weights ensure consistent results
 
 ---
 
