@@ -1,6 +1,7 @@
 {
   "name": "data-cloud-ontology-editor",
   "version": "1.0.0",
+  "type": "module",
   "description": "Ontology Editor for Salesforce Data Cloud DMOs - Inspired by Palantir Ontology Manager",
   "private": true,
   "scripts": {

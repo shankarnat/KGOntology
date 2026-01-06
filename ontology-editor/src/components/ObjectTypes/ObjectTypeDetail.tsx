@@ -482,10 +482,6 @@ export function ObjectTypeDetail() {
       </div>
     </div>
   );
-
-  function getDMOById(id: string) {
-    return useOntologyStore.getState().getDMOById(id);
-  }
 }
 
 export default ObjectTypeDetail;
