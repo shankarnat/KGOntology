@@ -1,0 +1,1 @@
+export { LinkTypesPage } from './LinkTypesPage';

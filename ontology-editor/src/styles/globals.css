@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-ontology-200;
+  }
+
+  body {
+    @apply bg-ontology-50 text-ontology-900 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer components {
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors;
+    @apply text-ontology-600 hover:bg-ontology-100 hover:text-ontology-900;
+  }
+
+  .sidebar-item.active {
+    @apply bg-sf-blue-50 text-sf-blue-600;
+  }
+
+  .card {
+    @apply bg-white rounded-lg border border-ontology-200 shadow-sm;
+    @apply hover:shadow-md hover:border-ontology-300 transition-all duration-200;
+  }
+
+  .card-header {
+    @apply px-4 py-3 border-b border-ontology-100;
+  }
+
+  .card-body {
+    @apply p-4;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+
+  .badge-blue {
+    @apply bg-sf-blue-100 text-sf-blue-700;
+  }
+
+  .badge-green {
+    @apply bg-green-100 text-green-700;
+  }
+
+  .badge-yellow {
+    @apply bg-yellow-100 text-yellow-700;
+  }
+
+  .badge-purple {
+    @apply bg-purple-100 text-purple-700;
+  }
+
+  .badge-red {
+    @apply bg-red-100 text-red-700;
+  }
+
+  .badge-gray {
+    @apply bg-ontology-100 text-ontology-600;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply bg-sf-blue-500 text-white hover:bg-sf-blue-600 focus:ring-sf-blue-500;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-ontology-700 border border-ontology-300 hover:bg-ontology-50 focus:ring-ontology-500;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 rounded-md border border-ontology-300 text-sm;
+    @apply focus:outline-none focus:ring-2 focus:ring-sf-blue-500 focus:border-sf-blue-500;
+    @apply placeholder:text-ontology-400;
+  }
+
+  .object-type-card {
+    @apply card cursor-pointer;
+  }
+
+  .object-type-card:hover {
+    @apply border-sf-blue-300;
+  }
+
+  .section-header {
+    @apply flex items-center justify-between mb-4;
+  }
+
+  .section-title {
+    @apply text-sm font-semibold text-ontology-700 flex items-center gap-2;
+  }
+
+  .section-count {
+    @apply text-xs text-ontology-500 bg-ontology-100 px-2 py-0.5 rounded-full;
+  }
+
+  .section-actions {
+    @apply flex items-center gap-3 text-sm;
+  }
+
+  .link-action {
+    @apply text-sf-blue-600 hover:text-sf-blue-700 font-medium cursor-pointer flex items-center gap-1;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.ontology.300') transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: theme('colors.ontology.300');
+    border-radius: 3px;
+  }
+}
