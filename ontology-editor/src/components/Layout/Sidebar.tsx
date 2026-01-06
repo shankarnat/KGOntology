@@ -90,7 +90,7 @@ function SidebarSection({ title, children }: SidebarSectionProps) {
 }
 
 export function Sidebar() {
-  const { dmos, linkTypes, groups } = useOntologyStore();
+  const { dmos, linkTypes, templates } = useOntologyStore();
 
   // Calculate stats
   const sharedPropertiesCount = dmos.reduce(
@@ -172,10 +172,10 @@ export function Sidebar() {
             disabled
           />
           <SidebarItem
-            to="/groups"
+            to="/templates"
             icon={<Grid3X3 className="w-4 h-4" />}
-            label="Groups"
-            count={groups.length}
+            label="Templates"
+            count={templates.length}
           />
           <SidebarItem
             to="/interfaces"

@@ -46,7 +46,7 @@ const colorOptions = [
 ];
 
 export function ObjectTypeEditorModal({ isOpen, onClose, objectType }: ObjectTypeEditorModalProps) {
-  const { addDMO, updateDMO, dmos, groups } = useOntologyStore();
+  const { addDMO, updateDMO, dmos, templates } = useOntologyStore();
   const isEditing = !!objectType;
 
   const [formData, setFormData] = useState({
@@ -174,12 +174,12 @@ export function ObjectTypeEditorModal({ isOpen, onClose, objectType }: ObjectTyp
       .join('');
   };
 
-  const toggleGroup = (groupId: string) => {
+  const toggleTemplate = (templateId: string) => {
     setFormData(prev => ({
       ...prev,
-      selectedGroups: prev.selectedGroups.includes(groupId)
-        ? prev.selectedGroups.filter(g => g !== groupId)
-        : [...prev.selectedGroups, groupId],
+      selectedGroups: prev.selectedGroups.includes(templateId)
+        ? prev.selectedGroups.filter(t => t !== templateId)
+        : [...prev.selectedGroups, templateId],
     }));
   };
 
@@ -415,25 +415,28 @@ export function ObjectTypeEditorModal({ isOpen, onClose, objectType }: ObjectTyp
                 </div>
               </div>
 
-              {/* Groups */}
-              {groups.length > 0 && (
+              {/* Templates */}
+              {templates.length > 0 && (
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold text-ontology-700 uppercase tracking-wider">
-                    Groups
+                    Templates
                   </h3>
+                  <p className="text-xs text-ontology-500">
+                    Assign this object type to templates for organization and reuse.
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    {groups.map(group => (
+                    {templates.map(template => (
                       <button
-                        key={group.id}
-                        onClick={() => toggleGroup(group.id)}
+                        key={template.id}
+                        onClick={() => toggleTemplate(template.id)}
                         className={clsx(
                           'px-3 py-1.5 rounded-full border text-sm transition-colors',
-                          formData.selectedGroups.includes(group.id)
+                          formData.selectedGroups.includes(template.id)
                             ? 'border-sf-blue-500 bg-sf-blue-50 text-sf-blue-700'
                             : 'border-ontology-200 text-ontology-600 hover:border-ontology-300'
                         )}
                       >
-                        {group.displayName}
+                        {template.displayName}
                       </button>
                     ))}
                   </div>

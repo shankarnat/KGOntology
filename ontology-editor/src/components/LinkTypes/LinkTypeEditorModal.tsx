@@ -32,7 +32,7 @@ export function LinkTypeEditorModal({
   onClose,
   linkType,
 }: LinkTypeEditorModalProps) {
-  const { dmos, addLinkType, updateLinkType, getDMOById, groups } = useOntologyStore();
+  const { dmos, addLinkType, updateLinkType, getDMOById, templates } = useOntologyStore();
   const isEditing = !!linkType;
 
   // Core form state
@@ -422,33 +422,33 @@ export function LinkTypeEditorModal({
               </label>
             </div>
 
-            {/* Groups */}
-            {groups.length > 0 && (
+            {/* Templates */}
+            {templates.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-ontology-700 mb-2">
-                  Groups
+                  Templates
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {groups.map(group => (
+                  {templates.map(template => (
                     <button
-                      key={group.id}
+                      key={template.id}
                       type="button"
                       onClick={() => {
-                        if (selectedGroups.includes(group.id)) {
-                          setSelectedGroups(selectedGroups.filter(g => g !== group.id));
+                        if (selectedGroups.includes(template.id)) {
+                          setSelectedGroups(selectedGroups.filter(t => t !== template.id));
                         } else {
-                          setSelectedGroups([...selectedGroups, group.id]);
+                          setSelectedGroups([...selectedGroups, template.id]);
                         }
                       }}
                       className={clsx(
                         'flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition-colors',
-                        selectedGroups.includes(group.id)
+                        selectedGroups.includes(template.id)
                           ? 'bg-sf-blue-50 border-sf-blue-300 text-sf-blue-700'
                           : 'bg-white border-ontology-200 text-ontology-600 hover:border-ontology-300'
                       )}
                     >
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: group.color }} />
-                      {group.displayName}
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: template.color }} />
+                      {template.displayName}
                     </button>
                   ))}
                 </div>

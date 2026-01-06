@@ -161,10 +161,12 @@ export interface LinkType {
 }
 
 // ============================================================================
-// Group Types
+// Template Types
 // ============================================================================
 
-export interface Group {
+export type TemplateCategory = 'starter' | 'industry' | 'use-case' | 'custom';
+
+export interface Template {
   id: string;
   name: string;
   displayName: string;
@@ -172,17 +174,25 @@ export interface Group {
   color: string;
   icon: string;
 
-  // Members
+  // Template metadata
+  category: TemplateCategory;
+
+  // Members - what this template includes
   objectTypes: string[];         // DMO IDs
   linkTypes: string[];           // Link Type IDs
 
   // Metadata
   memberCount: number;
   lastModified: string;
+  createdAt?: string;
 
   // Flags
   isFavorite: boolean;
+  isBuiltIn: boolean;            // Built-in templates can't be deleted
 }
+
+// Backward compatibility alias
+export type Group = Template;
 
 // ============================================================================
 // Action Types
@@ -312,7 +322,7 @@ export interface HealthIssue {
   title: string;
   description: string;
   affectedObject: {
-    type: 'dmo' | 'linkType' | 'property' | 'group';
+    type: 'dmo' | 'linkType' | 'property' | 'template';
     id: string;
     name: string;
   };
@@ -326,9 +336,9 @@ export interface HealthIssue {
 
 export interface DiscoverSection {
   id: string;
-  type: 'recently_viewed' | 'favorites' | 'favorite_groups' | 'group' | 'prominent';
+  type: 'recently_viewed' | 'favorites' | 'favorite_templates' | 'template' | 'prominent';
   title: string;
-  groupId?: string;              // For group sections
+  templateId?: string;           // For template sections
   itemsPerSection: number;
   order: number;
   isVisible: boolean;
@@ -358,7 +368,7 @@ export interface OntologyConfig {
 // ============================================================================
 
 export interface RecentlyViewed {
-  type: 'dmo' | 'linkType' | 'group' | 'property';
+  type: 'dmo' | 'linkType' | 'template' | 'property';
   id: string;
   name: string;
   icon: string;
@@ -379,7 +389,7 @@ export interface Proposal {
 
 export interface ProposalChange {
   type: 'create' | 'update' | 'delete';
-  objectType: 'dmo' | 'linkType' | 'property' | 'group';
+  objectType: 'dmo' | 'linkType' | 'property' | 'template';
   objectId: string;
   objectName: string;
   before?: Record<string, unknown>;
@@ -391,7 +401,7 @@ export interface ProposalChange {
 // ============================================================================
 
 export interface SearchResult {
-  type: 'dmo' | 'linkType' | 'property' | 'group' | 'function';
+  type: 'dmo' | 'linkType' | 'property' | 'template' | 'function';
   id: string;
   name: string;
   displayName: string;

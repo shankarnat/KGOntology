@@ -21,21 +21,21 @@ interface CustomizeModalProps {
 const sectionTypeIcons: Record<string, React.ReactNode> = {
   recently_viewed: <Clock className="w-4 h-4" />,
   favorites: <Star className="w-4 h-4" />,
-  favorite_groups: <Grid3X3 className="w-4 h-4" />,
+  favorite_templates: <Grid3X3 className="w-4 h-4" />,
   prominent: <Star className="w-4 h-4" />,
-  group: <Grid3X3 className="w-4 h-4" />,
+  template: <Grid3X3 className="w-4 h-4" />,
 };
 
 const sectionTypeLabels: Record<string, string> = {
   recently_viewed: 'Recently viewed object types',
   favorites: 'Favorite object types',
-  favorite_groups: 'Favorite groups',
+  favorite_templates: 'Favorite templates',
   prominent: 'Prominent object types',
-  group: 'Group',
+  template: 'Template',
 };
 
 export function CustomizeModal({ isOpen, onClose }: CustomizeModalProps) {
-  const { config, updateDiscoverSections, groups } = useOntologyStore();
+  const { config, updateDiscoverSections, templates } = useOntologyStore();
   const [sections, setSections] = useState<DiscoverSection[]>(
     config.discoverSections
   );
@@ -43,29 +43,29 @@ export function CustomizeModal({ isOpen, onClose }: CustomizeModalProps) {
     config.defaultItemsPerSection
   );
   const [showAddMenu, setShowAddMenu] = useState(false);
-  const [showGroupMenu, setShowGroupMenu] = useState(false);
+  const [showTemplateMenu, setShowTemplateMenu] = useState(false);
 
   const handleSave = () => {
     updateDiscoverSections(sections);
     onClose();
   };
 
-  const handleAddSection = (type: DiscoverSection['type'], groupId?: string) => {
+  const handleAddSection = (type: DiscoverSection['type'], templateId?: string) => {
     const newSection: DiscoverSection = {
       id: `${type}_${Date.now()}`,
       type,
       title:
-        type === 'group' && groupId
-          ? groups.find(g => g.id === groupId)?.displayName || 'Group'
+        type === 'template' && templateId
+          ? templates.find(t => t.id === templateId)?.displayName || 'Template'
           : sectionTypeLabels[type],
-      groupId,
+      templateId,
       itemsPerSection,
       order: sections.length,
       isVisible: true,
     };
     setSections([...sections, newSection]);
     setShowAddMenu(false);
-    setShowGroupMenu(false);
+    setShowTemplateMenu(false);
   };
 
   const handleRemoveSection = (id: string) => {
@@ -128,18 +128,18 @@ export function CustomizeModal({ isOpen, onClose }: CustomizeModalProps) {
                   className="fixed inset-0 z-10"
                   onClick={() => {
                     setShowAddMenu(false);
-                    setShowGroupMenu(false);
+                    setShowTemplateMenu(false);
                   }}
                 />
                 <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-ontology-200 py-1 z-20">
                   <button
                     className="w-full px-4 py-2 text-sm text-ontology-700 hover:bg-ontology-50 flex items-center gap-2"
                     onClick={() => {
-                      setShowGroupMenu(!showGroupMenu);
+                      setShowTemplateMenu(!showTemplateMenu);
                     }}
                   >
                     <Grid3X3 className="w-4 h-4 text-ontology-500" />
-                    <span>Group</span>
+                    <span>Template</span>
                     <ChevronDown className="w-4 h-4 ml-auto" />
                   </button>
                   <button
@@ -151,10 +151,10 @@ export function CustomizeModal({ isOpen, onClose }: CustomizeModalProps) {
                   </button>
                   <button
                     className="w-full px-4 py-2 text-sm text-ontology-700 hover:bg-ontology-50 flex items-center gap-2"
-                    onClick={() => handleAddSection('favorite_groups')}
+                    onClick={() => handleAddSection('favorite_templates')}
                   >
                     <Grid3X3 className="w-4 h-4 text-ontology-500" />
-                    <span>Favorite groups</span>
+                    <span>Favorite templates</span>
                   </button>
                   <button
                     className="w-full px-4 py-2 text-sm text-ontology-700 hover:bg-ontology-50 flex items-center gap-2"
@@ -164,24 +164,24 @@ export function CustomizeModal({ isOpen, onClose }: CustomizeModalProps) {
                     <span>Recently viewed object types</span>
                   </button>
 
-                  {/* Group submenu */}
-                  {showGroupMenu && (
+                  {/* Template submenu */}
+                  {showTemplateMenu && (
                     <div className="absolute left-full top-0 ml-1 w-56 bg-white rounded-lg shadow-lg border border-ontology-200 py-1 max-h-64 overflow-y-auto">
                       <div className="px-4 py-2 text-xs font-semibold text-ontology-500 uppercase">
-                        Choose group...
+                        Choose template...
                       </div>
-                      {groups.map(group => (
+                      {templates.map(template => (
                         <button
-                          key={group.id}
+                          key={template.id}
                           className="w-full px-4 py-2 text-sm text-ontology-700 hover:bg-ontology-50 flex items-center gap-2"
-                          onClick={() => handleAddSection('group', group.id)}
+                          onClick={() => handleAddSection('template', template.id)}
                         >
                           <span
                             className="w-3 h-3 rounded"
-                            style={{ backgroundColor: group.color }}
+                            style={{ backgroundColor: template.color }}
                           />
-                          <span className="flex-1 truncate">{group.displayName}</span>
-                          <Badge variant="gray">{group.memberCount}</Badge>
+                          <span className="flex-1 truncate">{template.displayName}</span>
+                          <Badge variant="gray">{template.memberCount}</Badge>
                         </button>
                       ))}
                     </div>
@@ -216,13 +216,13 @@ export function CustomizeModal({ isOpen, onClose }: CustomizeModalProps) {
                 <span className="text-sm font-medium text-ontology-800">
                   {section.title}
                 </span>
-                {section.type === 'group' && section.groupId && (
+                {section.type === 'template' && section.templateId && (
                   <Badge
                     variant="custom"
-                    color={groups.find(g => g.id === section.groupId)?.color}
+                    color={templates.find(t => t.id === section.templateId)?.color}
                     className="ml-2"
                   >
-                    {groups.find(g => g.id === section.groupId)?.memberCount} items
+                    {templates.find(t => t.id === section.templateId)?.memberCount} items
                   </Badge>
                 )}
               </div>

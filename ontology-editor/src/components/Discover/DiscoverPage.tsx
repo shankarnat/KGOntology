@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useOntologyStore } from '@/hooks/useOntologyStore';
 import { ObjectTypeCard } from './ObjectTypeCard';
-import { GroupCard } from './GroupCard';
+import { TemplateCard } from './TemplateCard';
 import { CustomizeModal } from './CustomizeModal';
 
 interface SectionHeaderProps {
@@ -61,17 +61,17 @@ export function DiscoverPage() {
 
   const {
     dmos,
-    groups,
+    templates,
     recentlyViewed,
     getFavoriteDMOs,
     getProminentDMOs,
-    getFavoriteGroups,
+    getFavoriteTemplates,
     config,
   } = useOntologyStore();
 
   const favoriteDMOs = getFavoriteDMOs();
   const prominentDMOs = getProminentDMOs();
-  const favoriteGroups = getFavoriteGroups();
+  const favoriteTemplates = getFavoriteTemplates();
 
   // Get recently viewed DMOs
   const recentlyViewedDMOs = recentlyViewed
@@ -94,7 +94,7 @@ export function DiscoverPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-ontology-900 mb-2">Discover</h1>
         <p className="text-ontology-600">
-          Explore object types, groups, and relationships in your Data Cloud ontology.
+          Explore object types, templates, and relationships in your Data Cloud ontology.
         </p>
       </div>
 
@@ -150,30 +150,30 @@ export function DiscoverPage() {
         </section>
       )}
 
-      {/* Favorite Groups Section */}
-      {favoriteGroups.length > 0 && (
+      {/* Favorite Templates Section */}
+      {favoriteTemplates.length > 0 && (
         <section className="mb-10">
           <SectionHeader
-            title="Favorite groups"
-            count={favoriteGroups.length}
+            title="Favorite templates"
+            count={favoriteTemplates.length}
             icon={<Grid3X3 className="w-4 h-4 text-ontology-400" />}
             onConfigureClick={() => setIsCustomizeOpen(true)}
-            onSeeAllClick={() => navigate('/groups?filter=favorites')}
+            onSeeAllClick={() => navigate('/templates?filter=favorites')}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {favoriteGroups.slice(0, config.defaultItemsPerSection).map(group => (
-              <GroupCard key={group.id} group={group} />
+            {favoriteTemplates.slice(0, config.defaultItemsPerSection).map(template => (
+              <TemplateCard key={template.id} template={template} />
             ))}
           </div>
         </section>
       )}
 
-      {/* RAG Core Group Section */}
-      {groups.some(g => g.id === 'rag_core') && (
+      {/* RAG Knowledge Graph Template Section */}
+      {templates.some(t => t.id === 'rag_knowledge_graph') && (
         <section className="mb-10">
           <SectionHeader
-            title="RAG Core"
-            count={dmos.filter(d => d.groups.includes('rag_core')).length}
+            title="RAG Knowledge Graph"
+            count={dmos.filter(d => d.groups.includes('rag_knowledge_graph')).length}
             icon={
               <span
                 className="w-3 h-3 rounded-full"
@@ -181,11 +181,11 @@ export function DiscoverPage() {
               />
             }
             onConfigureClick={() => setIsCustomizeOpen(true)}
-            onSeeAllClick={() => navigate('/groups/rag_core')}
+            onSeeAllClick={() => navigate('/templates/rag_knowledge_graph')}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {dmos
-              .filter(d => d.groups.includes('rag_core'))
+              .filter(d => d.groups.includes('rag_knowledge_graph'))
               .slice(0, config.defaultItemsPerSection)
               .map(dmo => (
                 <ObjectTypeCard key={dmo.id} dmo={dmo} showGroups={false} />

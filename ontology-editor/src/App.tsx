@@ -3,7 +3,7 @@ import { Layout } from '@/components/Layout';
 import { DiscoverPage } from '@/components/Discover';
 import { ObjectTypesPage, ObjectTypeDetail } from '@/components/ObjectTypes';
 import { LinkTypesPage, LinkTypeDetail } from '@/components/LinkTypes';
-import { GroupsPage } from '@/components/Groups';
+import { TemplatesPage } from '@/components/Templates';
 import { PropertiesPage } from '@/components/Properties';
 
 // Placeholder pages for routes not yet implemented
@@ -33,10 +33,14 @@ export function App() {
           <Route path="link-types" element={<LinkTypesPage />} />
           <Route path="link-types/:id" element={<LinkTypeDetail />} />
 
-          {/* Groups */}
-          <Route path="groups" element={<GroupsPage />} />
-          <Route path="groups/new" element={<PlaceholderPage title="New Group" />} />
-          <Route path="groups/:id" element={<PlaceholderPage title="Group Details" />} />
+          {/* Templates */}
+          <Route path="templates" element={<TemplatesPage />} />
+          <Route path="templates/new" element={<PlaceholderPage title="New Template" />} />
+          <Route path="templates/:id" element={<PlaceholderPage title="Template Details" />} />
+
+          {/* Legacy Groups routes - redirect to templates */}
+          <Route path="groups" element={<TemplatesPage />} />
+          <Route path="groups/:id" element={<PlaceholderPage title="Template Details" />} />
 
           {/* Properties */}
           <Route path="properties" element={<PropertiesPage />} />

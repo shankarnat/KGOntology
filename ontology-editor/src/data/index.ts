@@ -1,13 +1,16 @@
 export { standardDMOs } from './standardDMOs';
 export { customDMOs } from './customDMOs';
 export { linkTypes } from './linkTypes';
-export { groups } from './groups';
+export { templates } from './templates';
 
 import { standardDMOs } from './standardDMOs';
 import { customDMOs } from './customDMOs';
 import { linkTypes } from './linkTypes';
-import { groups } from './groups';
-import type { DMO, LinkType, Group, DiscoverSection, OntologyConfig } from '@/types';
+import { templates } from './templates';
+import type { DMO, LinkType, Template, DiscoverSection, OntologyConfig } from '@/types';
+
+// Backward compatibility alias
+export { templates as groups };
 
 // Combined DMOs
 export const allDMOs: DMO[] = [...standardDMOs, ...customDMOs];
@@ -22,20 +25,29 @@ export function getLinkTypeById(id: string): LinkType | undefined {
   return linkTypes.find(lt => lt.id === id);
 }
 
-// Get Group by ID
-export function getGroupById(id: string): Group | undefined {
-  return groups.find(g => g.id === id);
+// Get Template by ID
+export function getTemplateById(id: string): Template | undefined {
+  return templates.find(t => t.id === id);
 }
 
-// Get DMOs by Group
-export function getDMOsByGroup(groupId: string): DMO[] {
-  return allDMOs.filter(dmo => dmo.groups.includes(groupId));
+// Backward compatibility alias
+export const getGroupById = getTemplateById;
+
+// Get DMOs by Template
+export function getDMOsByTemplate(templateId: string): DMO[] {
+  return allDMOs.filter(dmo => dmo.groups.includes(templateId));
 }
 
-// Get Link Types by Group
-export function getLinkTypesByGroup(groupId: string): LinkType[] {
-  return linkTypes.filter(lt => lt.groups.includes(groupId));
+// Backward compatibility alias
+export const getDMOsByGroup = getDMOsByTemplate;
+
+// Get Link Types by Template
+export function getLinkTypesByTemplate(templateId: string): LinkType[] {
+  return linkTypes.filter(lt => lt.groups.includes(templateId));
 }
+
+// Backward compatibility alias
+export const getLinkTypesByGroup = getLinkTypesByTemplate;
 
 // Get favorite DMOs
 export function getFavoriteDMOs(): DMO[] {
@@ -52,10 +64,13 @@ export function getFavoriteLinkTypes(): LinkType[] {
   return linkTypes.filter(lt => lt.isFavorite);
 }
 
-// Get favorite Groups
-export function getFavoriteGroups(): Group[] {
-  return groups.filter(g => g.isFavorite);
+// Get favorite Templates
+export function getFavoriteTemplates(): Template[] {
+  return templates.filter(t => t.isFavorite);
 }
+
+// Backward compatibility alias
+export const getFavoriteGroups = getFavoriteTemplates;
 
 // Default Discover sections
 export const defaultDiscoverSections: DiscoverSection[] = [
@@ -76,9 +91,9 @@ export const defaultDiscoverSections: DiscoverSection[] = [
     isVisible: true,
   },
   {
-    id: 'favorite_groups',
-    type: 'favorite_groups',
-    title: 'Favorite groups',
+    id: 'favorite_templates',
+    type: 'favorite_templates',
+    title: 'Favorite templates',
     itemsPerSection: 6,
     order: 2,
     isVisible: true,
@@ -103,7 +118,7 @@ export const defaultOntologyConfig: OntologyConfig = {
 export const ontologyStats = {
   objectTypes: allDMOs.length,
   linkTypes: linkTypes.length,
-  groups: groups.length,
+  templates: templates.length,
   totalObjects: allDMOs.reduce((sum, dmo) => sum + dmo.objectCount, 0),
   totalLinks: linkTypes.reduce((sum, lt) => sum + lt.linkCount, 0),
   standardDMOs: standardDMOs.length,
