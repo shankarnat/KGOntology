@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Star } from 'lucide-react';
+import { Star, List } from 'lucide-react';
 import clsx from 'clsx';
 import type { DMO } from '@/types';
 import { Card, CardBody, Badge, IconBox } from '@/components/common';
@@ -26,6 +26,11 @@ export function ObjectTypeCard({ dmo, showGroups = true }: ObjectTypeCardProps) 
     navigate(`/object-types/${dmo.id}`);
   };
 
+  const handlePropertiesClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/object-types/${dmo.id}#properties`);
+  };
+
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     toggleDMOFavorite(dmo.id);
@@ -43,20 +48,29 @@ export function ObjectTypeCard({ dmo, showGroups = true }: ObjectTypeCardProps) 
         {/* Header with Icon and Favorite */}
         <div className="flex items-start justify-between mb-3">
           <IconBox name={dmo.icon} color={dmo.color} size="md" />
-          <button
-            onClick={handleFavoriteClick}
-            className={clsx(
-              'p-1 rounded transition-all',
-              dmo.isFavorite
-                ? 'text-yellow-500'
-                : 'text-ontology-300 opacity-0 group-hover:opacity-100 hover:text-yellow-500'
-            )}
-          >
-            <Star
-              className="w-4 h-4"
-              fill={dmo.isFavorite ? 'currentColor' : 'none'}
-            />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handlePropertiesClick}
+              className="p-1 rounded text-ontology-300 opacity-0 group-hover:opacity-100 hover:text-sf-blue-500 transition-all"
+              title="View properties"
+            >
+              <List className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleFavoriteClick}
+              className={clsx(
+                'p-1 rounded transition-all',
+                dmo.isFavorite
+                  ? 'text-yellow-500'
+                  : 'text-ontology-300 opacity-0 group-hover:opacity-100 hover:text-yellow-500'
+              )}
+            >
+              <Star
+                className="w-4 h-4"
+                fill={dmo.isFavorite ? 'currentColor' : 'none'}
+              />
+            </button>
+          </div>
         </div>
 
         {/* Title and Object Count */}
@@ -65,7 +79,7 @@ export function ObjectTypeCard({ dmo, showGroups = true }: ObjectTypeCardProps) 
             {dmo.displayName}
           </h3>
           <p className="text-xs text-ontology-500">
-            {dmo.objectCount.toLocaleString()} objects
+            {dmo.objectCount.toLocaleString()} objects • {dmo.properties.length} properties
           </p>
         </div>
 

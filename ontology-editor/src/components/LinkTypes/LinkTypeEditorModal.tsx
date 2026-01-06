@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
+import clsx from 'clsx';
 import { Modal, ModalFooter, IconBox } from '@/components/common';
 import { useOntologyStore } from '@/hooks/useOntologyStore';
 import type { LinkType, LinkCardinality, LinkDirection } from '@/types';
@@ -12,22 +15,16 @@ interface LinkTypeEditorModalProps {
   linkType?: LinkType | null;
 }
 
-const cardinalities: { value: LinkCardinality; label: string; description: string }[] = [
-  { value: 'one-to-one', label: 'One to One', description: 'Each source has exactly one target' },
-  { value: 'one-to-many', label: 'One to Many', description: 'Each source can have multiple targets' },
-  { value: 'many-to-one', label: 'Many to One', description: 'Multiple sources point to one target' },
-  { value: 'many-to-many', label: 'Many to Many', description: 'Multiple sources to multiple targets' },
-];
-
-const lineStyles: { value: 'solid' | 'dashed' | 'dotted'; label: string }[] = [
-  { value: 'solid', label: 'Solid' },
-  { value: 'dashed', label: 'Dashed' },
-  { value: 'dotted', label: 'Dotted' },
+const cardinalities: { value: LinkCardinality; label: string }[] = [
+  { value: 'one-to-one', label: '1:1' },
+  { value: 'one-to-many', label: '1:N' },
+  { value: 'many-to-one', label: 'N:1' },
+  { value: 'many-to-many', label: 'N:N' },
 ];
 
 const defaultColors = [
   '#0176d3', '#2e844a', '#9050e9', '#f59e0b', '#dc2626',
-  '#ec4899', '#6366f1', '#0d9488', '#64748b', '#22c55e',
+  '#ec4899', '#6366f1', '#0d9488',
 ];
 
 export function LinkTypeEditorModal({
@@ -35,20 +32,23 @@ export function LinkTypeEditorModal({
   onClose,
   linkType,
 }: LinkTypeEditorModalProps) {
-  const { dmos, addLinkType, updateLinkType, getDMOById } = useOntologyStore();
+  const { dmos, addLinkType, updateLinkType, getDMOById, groups } = useOntologyStore();
   const isEditing = !!linkType;
 
-  // Form state
-  const [name, setName] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [description, setDescription] = useState('');
+  // Core form state
   const [sourceObjectType, setSourceObjectType] = useState('');
   const [targetObjectType, setTargetObjectType] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [cardinality, setCardinality] = useState<LinkCardinality>('many-to-many');
+  const [color, setColor] = useState('#0176d3');
+
+  // Advanced options
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [direction, setDirection] = useState<LinkDirection>('unidirectional');
   const [sourceDisplayName, setSourceDisplayName] = useState('');
   const [targetDisplayName, setTargetDisplayName] = useState('');
-  const [color, setColor] = useState('#0176d3');
   const [lineStyle, setLineStyle] = useState<'solid' | 'dashed' | 'dotted'>('solid');
   const [isRequired, setIsRequired] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
@@ -56,84 +56,68 @@ export function LinkTypeEditorModal({
   // Error state
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { groups } = useOntologyStore();
-
   // Initialize form when linkType changes
   useEffect(() => {
     if (linkType) {
-      setName(linkType.name);
-      setDisplayName(linkType.displayName);
-      setDescription(linkType.description);
       setSourceObjectType(linkType.sourceObjectType);
       setTargetObjectType(linkType.targetObjectType);
+      setDisplayName(linkType.displayName);
       setCardinality(linkType.cardinality);
+      setColor(linkType.color);
+      setName(linkType.name);
+      setDescription(linkType.description);
       setDirection(linkType.direction);
       setSourceDisplayName(linkType.sourceDisplayName);
       setTargetDisplayName(linkType.targetDisplayName);
-      setColor(linkType.color);
       setLineStyle(linkType.lineStyle);
       setIsRequired(linkType.isRequired);
       setSelectedGroups(linkType.groups);
+      setShowAdvanced(true); // Show advanced when editing
     } else {
       // Reset form for new link type
-      setName('');
-      setDisplayName('');
-      setDescription('');
       setSourceObjectType('');
       setTargetObjectType('');
+      setDisplayName('');
       setCardinality('many-to-many');
+      setColor(defaultColors[Math.floor(Math.random() * defaultColors.length)]);
+      setName('');
+      setDescription('');
       setDirection('unidirectional');
       setSourceDisplayName('');
       setTargetDisplayName('');
-      setColor('#0176d3');
       setLineStyle('solid');
       setIsRequired(false);
       setSelectedGroups([]);
+      setShowAdvanced(false);
     }
     setErrors({});
   }, [linkType, isOpen]);
 
-  // Auto-generate name from displayName
-  const handleDisplayNameChange = (value: string) => {
-    setDisplayName(value);
-    if (!isEditing && !name) {
-      // Convert to UPPER_SNAKE_CASE
-      const generatedName = value
+  // Auto-generate values when source/target/displayName change
+  useEffect(() => {
+    if (!isEditing && displayName) {
+      // Auto-generate API name
+      const generatedName = displayName
         .toUpperCase()
         .replace(/[^A-Z0-9\s]/g, '')
         .replace(/\s+/g, '_');
       setName(generatedName);
+
+      // Auto-generate display names
+      setSourceDisplayName(displayName.toLowerCase());
+      const sourceDMO = getDMOById(sourceObjectType);
+      const targetDMO = getDMOById(targetObjectType);
+      if (sourceDMO && targetDMO) {
+        setTargetDisplayName(`has ${targetDMO.displayName.toLowerCase()}`);
+      }
     }
-    // Auto-generate source display name
-    if (!sourceDisplayName) {
-      setSourceDisplayName(value.toLowerCase());
-    }
-  };
+  }, [displayName, sourceObjectType, targetObjectType, isEditing, getDMOById]);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-
-    if (!name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
-      newErrors.name = 'Name must be UPPER_SNAKE_CASE (e.g., AUTHORED_BY)';
-    }
-    if (!displayName.trim()) {
-      newErrors.displayName = 'Display name is required';
-    }
-    if (!sourceObjectType) {
-      newErrors.sourceObjectType = 'Source object type is required';
-    }
-    if (!targetObjectType) {
-      newErrors.targetObjectType = 'Target object type is required';
-    }
-    if (!sourceDisplayName.trim()) {
-      newErrors.sourceDisplayName = 'Source display name is required';
-    }
-    if (!targetDisplayName.trim()) {
-      newErrors.targetDisplayName = 'Target display name is required';
-    }
-
+    if (!sourceObjectType) newErrors.source = 'Required';
+    if (!targetObjectType) newErrors.target = 'Required';
+    if (!displayName.trim()) newErrors.displayName = 'Required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -141,17 +125,21 @@ export function LinkTypeEditorModal({
   const handleSave = () => {
     if (!validate()) return;
 
+    const finalName = name || displayName.toUpperCase().replace(/[^A-Z0-9\s]/g, '').replace(/\s+/g, '_');
+    const finalSourceDisplayName = sourceDisplayName || displayName.toLowerCase();
+    const finalTargetDisplayName = targetDisplayName || `has ${getDMOById(targetObjectType)?.displayName.toLowerCase() || 'target'}`;
+
     const linkTypeData: LinkType = {
-      id: linkType?.id || name.toLowerCase().replace(/_/g, '_'),
-      name,
+      id: linkType?.id || `link-${Date.now()}`,
+      name: finalName,
       displayName,
       description,
       sourceObjectType,
       targetObjectType,
       cardinality,
       direction,
-      sourceDisplayName,
-      targetDisplayName,
+      sourceDisplayName: finalSourceDisplayName,
+      targetDisplayName: finalTargetDisplayName,
       properties: linkType?.properties || [],
       linkCount: linkType?.linkCount || 0,
       lastModified: new Date().toISOString(),
@@ -180,340 +168,294 @@ export function LinkTypeEditorModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? 'Edit Link Type' : 'Create Link Type'}
-      size="xl"
+      title={isEditing ? 'Edit Link Type' : 'Create Link'}
+      size="lg"
     >
       <div className="space-y-6">
-        {/* Preview */}
-        {sourceObjectType && targetObjectType && (
-          <div className="bg-ontology-50 rounded-lg p-4">
-            <label className="text-xs font-semibold text-ontology-500 uppercase mb-3 block">
-              Preview
-            </label>
-            <div className="flex items-center justify-center gap-4">
-              <div className="flex items-center gap-2">
-                {sourceDMO && (
+        {/* Simple Visual Builder */}
+        <div className="bg-gradient-to-r from-ontology-50 to-ontology-100 rounded-xl p-6">
+          <div className="flex items-center gap-4">
+            {/* Source Selection */}
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-ontology-500 uppercase mb-2">
+                From
+              </label>
+              <select
+                value={sourceObjectType}
+                onChange={e => setSourceObjectType(e.target.value)}
+                className={clsx(
+                  'w-full px-4 py-3 rounded-lg border-2 bg-white text-lg font-medium transition-colors',
+                  errors.source ? 'border-red-300' : 'border-ontology-200 focus:border-sf-blue-400'
+                )}
+              >
+                <option value="">Select object...</option>
+                {dmos.map(dmo => (
+                  <option key={dmo.id} value={dmo.id}>
+                    {dmo.displayName}
+                  </option>
+                ))}
+              </select>
+              {sourceDMO && (
+                <div className="flex items-center gap-2 mt-2 px-1">
                   <IconBox name={sourceDMO.icon} color={sourceDMO.color} size="sm" />
-                )}
-                <span className="font-medium text-ontology-700">
-                  {sourceDMO?.displayName}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 flex-1 max-w-xs">
-                <div
-                  className="flex-1 h-0.5"
-                  style={{
-                    backgroundColor: lineStyle === 'solid' ? color : 'transparent',
-                    borderTop: lineStyle !== 'solid' ? `2px ${lineStyle} ${color}` : 'none',
-                  }}
-                />
-                <div
-                  className="px-3 py-1 rounded-full text-xs font-medium"
-                  style={{ backgroundColor: `${color}15`, color }}
-                >
-                  {displayName || 'Link Name'}
+                  <span className="text-sm text-ontology-600">{sourceDMO.displayName}</span>
                 </div>
+              )}
+            </div>
+
+            {/* Arrow with Link Name */}
+            <div className="flex flex-col items-center gap-2 min-w-[200px]">
+              <div className="flex items-center w-full">
                 <div
-                  className="flex-1 h-0.5"
-                  style={{
-                    backgroundColor: lineStyle === 'solid' ? color : 'transparent',
-                    borderTop: lineStyle !== 'solid' ? `2px ${lineStyle} ${color}` : 'none',
-                  }}
+                  className="flex-1 h-1 rounded"
+                  style={{ backgroundColor: color }}
                 />
-                <ArrowRight className="w-4 h-4" style={{ color }} />
+                <ArrowRight className="w-6 h-6 -ml-1" style={{ color }} />
               </div>
-              <div className="flex items-center gap-2">
-                {targetDMO && (
-                  <IconBox name={targetDMO.icon} color={targetDMO.color} size="sm" />
+              <input
+                type="text"
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                className={clsx(
+                  'w-full text-center px-3 py-2 rounded-lg border-2 font-medium text-sm',
+                  errors.displayName ? 'border-red-300' : 'border-ontology-200 focus:border-sf-blue-400'
                 )}
-                <span className="font-medium text-ontology-700">
-                  {targetDMO?.displayName}
-                </span>
-              </div>
+                placeholder="Link name..."
+              />
+            </div>
+
+            {/* Target Selection */}
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-ontology-500 uppercase mb-2">
+                To
+              </label>
+              <select
+                value={targetObjectType}
+                onChange={e => setTargetObjectType(e.target.value)}
+                className={clsx(
+                  'w-full px-4 py-3 rounded-lg border-2 bg-white text-lg font-medium transition-colors',
+                  errors.target ? 'border-red-300' : 'border-ontology-200 focus:border-sf-blue-400'
+                )}
+              >
+                <option value="">Select object...</option>
+                {dmos.map(dmo => (
+                  <option key={dmo.id} value={dmo.id}>
+                    {dmo.displayName}
+                  </option>
+                ))}
+              </select>
+              {targetDMO && (
+                <div className="flex items-center gap-2 mt-2 px-1">
+                  <IconBox name={targetDMO.icon} color={targetDMO.color} size="sm" />
+                  <span className="text-sm text-ontology-600">{targetDMO.displayName}</span>
+                </div>
+              )}
             </div>
           </div>
-        )}
-
-        {/* Basic Info */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-ontology-700 mb-1">
-              Display Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={displayName}
-              onChange={e => handleDisplayNameChange(e.target.value)}
-              className={`input ${errors.displayName ? 'border-red-500' : ''}`}
-              placeholder="e.g., Authored By"
-            />
-            {errors.displayName && (
-              <p className="text-sm text-red-500 mt-1">{errors.displayName}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-ontology-700 mb-1">
-              API Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value.toUpperCase())}
-              className={`input font-mono ${errors.name ? 'border-red-500' : ''}`}
-              placeholder="e.g., AUTHORED_BY"
-            />
-            {errors.name && (
-              <p className="text-sm text-red-500 mt-1">{errors.name}</p>
-            )}
-          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-ontology-700 mb-1">
-            Description
-          </label>
-          <textarea
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            className="input min-h-[80px]"
-            placeholder="Describe the relationship..."
-          />
-        </div>
-
-        {/* Source and Target */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Quick Options Row */}
+        <div className="flex items-center gap-6">
+          {/* Cardinality */}
           <div>
-            <label className="block text-sm font-medium text-ontology-700 mb-1">
-              Source Object Type <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={sourceObjectType}
-              onChange={e => setSourceObjectType(e.target.value)}
-              className={`input ${errors.sourceObjectType ? 'border-red-500' : ''}`}
-            >
-              <option value="">Select source...</option>
-              {dmos.map(dmo => (
-                <option key={dmo.id} value={dmo.id}>
-                  {dmo.displayName}
-                </option>
-              ))}
-            </select>
-            {errors.sourceObjectType && (
-              <p className="text-sm text-red-500 mt-1">{errors.sourceObjectType}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-ontology-700 mb-1">
-              Target Object Type <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={targetObjectType}
-              onChange={e => setTargetObjectType(e.target.value)}
-              className={`input ${errors.targetObjectType ? 'border-red-500' : ''}`}
-            >
-              <option value="">Select target...</option>
-              {dmos.map(dmo => (
-                <option key={dmo.id} value={dmo.id}>
-                  {dmo.displayName}
-                </option>
-              ))}
-            </select>
-            {errors.targetObjectType && (
-              <p className="text-sm text-red-500 mt-1">{errors.targetObjectType}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Display Names */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-ontology-700 mb-1">
-              Source Display Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={sourceDisplayName}
-              onChange={e => setSourceDisplayName(e.target.value)}
-              className={`input ${errors.sourceDisplayName ? 'border-red-500' : ''}`}
-              placeholder="e.g., authored by"
-            />
-            <p className="text-xs text-ontology-500 mt-1">
-              How to read from source: "Document <strong>{sourceDisplayName || '...'}</strong> Individual"
-            </p>
-            {errors.sourceDisplayName && (
-              <p className="text-sm text-red-500 mt-1">{errors.sourceDisplayName}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-ontology-700 mb-1">
-              Target Display Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={targetDisplayName}
-              onChange={e => setTargetDisplayName(e.target.value)}
-              className={`input ${errors.targetDisplayName ? 'border-red-500' : ''}`}
-              placeholder="e.g., is author of"
-            />
-            <p className="text-xs text-ontology-500 mt-1">
-              How to read from target: "Individual <strong>{targetDisplayName || '...'}</strong> Document"
-            </p>
-            {errors.targetDisplayName && (
-              <p className="text-sm text-red-500 mt-1">{errors.targetDisplayName}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Cardinality and Direction */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-ontology-700 mb-1">
+            <label className="block text-xs font-semibold text-ontology-500 uppercase mb-2">
               Cardinality
             </label>
-            <select
-              value={cardinality}
-              onChange={e => setCardinality(e.target.value as LinkCardinality)}
-              className="input"
-            >
+            <div className="flex gap-1">
               {cardinalities.map(c => (
-                <option key={c.value} value={c.value}>
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => setCardinality(c.value)}
+                  className={clsx(
+                    'px-3 py-2 text-sm font-medium rounded-lg border transition-colors',
+                    cardinality === c.value
+                      ? 'bg-sf-blue-500 border-sf-blue-500 text-white'
+                      : 'bg-white border-ontology-200 text-ontology-600 hover:border-ontology-300'
+                  )}
+                >
                   {c.label}
-                </option>
+                </button>
               ))}
-            </select>
-            <p className="text-xs text-ontology-500 mt-1">
-              {cardinalities.find(c => c.value === cardinality)?.description}
-            </p>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-ontology-700 mb-1">
-              Direction
-            </label>
-            <select
-              value={direction}
-              onChange={e => setDirection(e.target.value as LinkDirection)}
-              className="input"
-            >
-              <option value="unidirectional">Unidirectional</option>
-              <option value="bidirectional">Bidirectional</option>
-            </select>
-            <p className="text-xs text-ontology-500 mt-1">
-              {direction === 'bidirectional'
-                ? 'Can traverse in both directions'
-                : 'Only traverse from source to target'}
-            </p>
-          </div>
-        </div>
 
-        {/* Visual Options */}
-        <div className="grid grid-cols-2 gap-4">
+          {/* Color */}
           <div>
-            <label className="block text-sm font-medium text-ontology-700 mb-1">
+            <label className="block text-xs font-semibold text-ontology-500 uppercase mb-2">
               Color
             </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={color}
-                onChange={e => setColor(e.target.value)}
-                className="w-10 h-10 rounded border border-ontology-300 cursor-pointer"
-              />
-              <div className="flex gap-1 flex-wrap">
-                {defaultColors.map(c => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setColor(c)}
-                    className={`w-6 h-6 rounded-full border-2 ${
-                      color === c ? 'border-ontology-900' : 'border-transparent'
-                    }`}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-ontology-700 mb-1">
-              Line Style
-            </label>
-            <div className="flex gap-4">
-              {lineStyles.map(style => (
-                <label key={style.value} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="lineStyle"
-                    value={style.value}
-                    checked={lineStyle === style.value}
-                    onChange={e => setLineStyle(e.target.value as typeof lineStyle)}
-                    className="text-sf-blue-600 focus:ring-sf-blue-500"
-                  />
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-8 h-0"
-                      style={{
-                        borderTop: `2px ${style.value} ${color}`,
-                      }}
-                    />
-                    <span className="text-sm text-ontology-700">{style.label}</span>
-                  </div>
-                </label>
+            <div className="flex gap-1">
+              {defaultColors.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={clsx(
+                    'w-8 h-8 rounded-lg border-2 transition-transform',
+                    color === c ? 'border-ontology-900 scale-110' : 'border-transparent hover:scale-105'
+                  )}
+                  style={{ backgroundColor: c }}
+                />
               ))}
             </div>
           </div>
         </div>
 
-        {/* Groups */}
-        <div>
-          <label className="block text-sm font-medium text-ontology-700 mb-2">
-            Groups
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {groups.map(group => (
-              <label
-                key={group.id}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border cursor-pointer transition-colors ${
-                  selectedGroups.includes(group.id)
-                    ? 'bg-sf-blue-50 border-sf-blue-300 text-sf-blue-700'
-                    : 'bg-white border-ontology-200 text-ontology-600 hover:border-ontology-300'
-                }`}
-              >
+        {/* Advanced Options Toggle */}
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="flex items-center gap-2 text-sm text-ontology-500 hover:text-ontology-700 transition-colors"
+        >
+          {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          <span>{showAdvanced ? 'Hide' : 'Show'} advanced options</span>
+        </button>
+
+        {/* Advanced Options */}
+        {showAdvanced && (
+          <div className="space-y-4 pt-4 border-t border-ontology-200">
+            {/* API Name & Description */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-ontology-700 mb-1">
+                  API Name
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value.toUpperCase())}
+                  className="input font-mono text-sm"
+                  placeholder="AUTHORED_BY"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ontology-700 mb-1">
+                  Direction
+                </label>
+                <select
+                  value={direction}
+                  onChange={e => setDirection(e.target.value as LinkDirection)}
+                  className="input"
+                >
+                  <option value="unidirectional">Unidirectional →</option>
+                  <option value="bidirectional">Bidirectional ↔</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-ontology-700 mb-1">
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                className="input min-h-[60px]"
+                placeholder="Describe this relationship..."
+              />
+            </div>
+
+            {/* Display Names */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-ontology-700 mb-1">
+                  Forward Label
+                </label>
+                <input
+                  type="text"
+                  value={sourceDisplayName}
+                  onChange={e => setSourceDisplayName(e.target.value)}
+                  className="input text-sm"
+                  placeholder="e.g., authored by"
+                />
+                <p className="text-xs text-ontology-400 mt-1">
+                  {sourceDMO?.displayName || 'Source'} → <strong>{sourceDisplayName || '...'}</strong> → {targetDMO?.displayName || 'Target'}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ontology-700 mb-1">
+                  Reverse Label
+                </label>
+                <input
+                  type="text"
+                  value={targetDisplayName}
+                  onChange={e => setTargetDisplayName(e.target.value)}
+                  className="input text-sm"
+                  placeholder="e.g., is author of"
+                />
+                <p className="text-xs text-ontology-400 mt-1">
+                  {targetDMO?.displayName || 'Target'} → <strong>{targetDisplayName || '...'}</strong> → {sourceDMO?.displayName || 'Source'}
+                </p>
+              </div>
+            </div>
+
+            {/* Line Style & Required */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-ontology-700">Line style:</span>
+                {(['solid', 'dashed', 'dotted'] as const).map(style => (
+                  <button
+                    key={style}
+                    type="button"
+                    onClick={() => setLineStyle(style)}
+                    className={clsx(
+                      'flex items-center gap-2 px-2 py-1 rounded',
+                      lineStyle === style ? 'bg-ontology-100' : 'hover:bg-ontology-50'
+                    )}
+                  >
+                    <div
+                      className="w-8 h-0"
+                      style={{ borderTop: `2px ${style} ${color}` }}
+                    />
+                  </button>
+                ))}
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={selectedGroups.includes(group.id)}
-                  onChange={e => {
-                    if (e.target.checked) {
-                      setSelectedGroups([...selectedGroups, group.id]);
-                    } else {
-                      setSelectedGroups(selectedGroups.filter(g => g !== group.id));
-                    }
-                  }}
-                  className="sr-only"
+                  checked={isRequired}
+                  onChange={e => setIsRequired(e.target.checked)}
+                  className="rounded border-ontology-300 text-sf-blue-600"
                 />
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: group.color }}
-                />
-                <span className="text-sm">{group.displayName}</span>
+                <span className="text-sm text-ontology-700">Required</span>
               </label>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        {/* Options */}
-        <div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isRequired}
-              onChange={e => setIsRequired(e.target.checked)}
-              className="rounded border-ontology-300 text-sf-blue-600 focus:ring-sf-blue-500"
-            />
-            <span className="text-sm text-ontology-700">
-              Required relationship (source must have at least one target)
-            </span>
-          </label>
-        </div>
+            {/* Groups */}
+            {groups.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-ontology-700 mb-2">
+                  Groups
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {groups.map(group => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      onClick={() => {
+                        if (selectedGroups.includes(group.id)) {
+                          setSelectedGroups(selectedGroups.filter(g => g !== group.id));
+                        } else {
+                          setSelectedGroups([...selectedGroups, group.id]);
+                        }
+                      }}
+                      className={clsx(
+                        'flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition-colors',
+                        selectedGroups.includes(group.id)
+                          ? 'bg-sf-blue-50 border-sf-blue-300 text-sf-blue-700'
+                          : 'bg-white border-ontology-200 text-ontology-600 hover:border-ontology-300'
+                      )}
+                    >
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: group.color }} />
+                      {group.displayName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <ModalFooter>
@@ -521,7 +463,7 @@ export function LinkTypeEditorModal({
           Cancel
         </button>
         <button onClick={handleSave} className="btn btn-primary">
-          {isEditing ? 'Save Changes' : 'Create Link Type'}
+          {isEditing ? 'Save Changes' : 'Create Link'}
         </button>
       </ModalFooter>
     </Modal>

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Star,
   Edit2,
@@ -20,6 +20,8 @@ import { formatDistanceToNow } from 'date-fns';
 export function ObjectTypeDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const propertiesSectionRef = useRef<HTMLDivElement>(null);
   const {
     getDMOById,
     toggleDMOFavorite,
@@ -32,6 +34,15 @@ export function ObjectTypeDetail() {
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // Handle hash navigation to properties section
+  useEffect(() => {
+    if (location.hash === '#properties' && propertiesSectionRef.current) {
+      setTimeout(() => {
+        propertiesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [location.hash]);
 
   const dmo = getDMOById(id || '');
 
@@ -199,19 +210,20 @@ export function ObjectTypeDetail() {
         {/* Main Content */}
         <div className="col-span-2 space-y-6">
           {/* Properties */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-ontology-900 flex items-center gap-2">
-                  <List className="w-4 h-4 text-ontology-500" />
-                  Properties
-                  <Badge variant="gray">{dmo.properties.length}</Badge>
-                </h2>
-                <button className="text-sm text-sf-blue-600 hover:text-sf-blue-700 font-medium">
-                  Add property
-                </button>
-              </div>
-            </CardHeader>
+          <div ref={propertiesSectionRef} id="properties">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold text-ontology-900 flex items-center gap-2">
+                    <List className="w-4 h-4 text-ontology-500" />
+                    Properties
+                    <Badge variant="gray">{dmo.properties.length}</Badge>
+                  </h2>
+                  <button className="text-sm text-sf-blue-600 hover:text-sf-blue-700 font-medium">
+                    Add property
+                  </button>
+                </div>
+              </CardHeader>
             <div className="divide-y divide-ontology-100">
               {dmo.properties.map(prop => (
                 <div
@@ -244,7 +256,8 @@ export function ObjectTypeDetail() {
                 </div>
               ))}
             </div>
-          </Card>
+            </Card>
+          </div>
 
           {/* Link Types */}
           <Card>
