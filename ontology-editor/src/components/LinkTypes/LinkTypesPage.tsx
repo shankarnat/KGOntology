@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Plus,
@@ -10,18 +10,20 @@ import {
 import clsx from 'clsx';
 import { useOntologyStore } from '@/hooks/useOntologyStore';
 import { Card, CardBody, Badge, IconBox } from '@/components/common';
-import type { LinkType, LinkCardinality } from '@/types';
+import { LinkTypeEditorModal } from './LinkTypeEditorModal';
+import type { LinkCardinality } from '@/types';
 
 type SortBy = 'name' | 'linkCount' | 'lastModified';
 
 export function LinkTypesPage() {
   const navigate = useNavigate();
-  const { linkTypes, dmos, groups, toggleLinkTypeFavorite, getDMOById } = useOntologyStore();
+  const { linkTypes, groups, toggleLinkTypeFavorite, getDMOById } = useOntologyStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('name');
   const [filterCardinality, setFilterCardinality] = useState<LinkCardinality | 'all'>('all');
   const [filterGroup, setFilterGroup] = useState<string | 'all'>('all');
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
 
   // Filter and sort link types
   const filteredLinkTypes = useMemo(() => {
@@ -84,7 +86,7 @@ export function LinkTypesPage() {
           </p>
         </div>
         <button
-          onClick={() => navigate('/link-types/new')}
+          onClick={() => setIsEditorOpen(true)}
           className="btn btn-primary"
         >
           <Plus className="w-4 h-4" />
@@ -275,6 +277,12 @@ export function LinkTypesPage() {
           })}
         </div>
       )}
+
+      {/* Link Type Editor Modal */}
+      <LinkTypeEditorModal
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+      />
     </div>
   );
 }

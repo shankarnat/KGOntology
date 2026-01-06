@@ -2,8 +2,9 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { DiscoverPage } from '@/components/Discover';
 import { ObjectTypesPage, ObjectTypeDetail } from '@/components/ObjectTypes';
-import { LinkTypesPage } from '@/components/LinkTypes';
+import { LinkTypesPage, LinkTypeDetail } from '@/components/LinkTypes';
 import { GroupsPage } from '@/components/Groups';
+import { PropertiesPage } from '@/components/Properties';
 
 // Placeholder pages for routes not yet implemented
 function PlaceholderPage({ title }: { title: string }) {
@@ -30,8 +31,7 @@ export function App() {
 
           {/* Link Types */}
           <Route path="link-types" element={<LinkTypesPage />} />
-          <Route path="link-types/new" element={<PlaceholderPage title="New Link Type" />} />
-          <Route path="link-types/:id" element={<PlaceholderPage title="Link Type Details" />} />
+          <Route path="link-types/:id" element={<LinkTypeDetail />} />
 
           {/* Groups */}
           <Route path="groups" element={<GroupsPage />} />
@@ -39,8 +39,8 @@ export function App() {
           <Route path="groups/:id" element={<PlaceholderPage title="Group Details" />} />
 
           {/* Properties */}
-          <Route path="properties" element={<PlaceholderPage title="Properties" />} />
-          <Route path="shared-properties" element={<PlaceholderPage title="Shared Properties" />} />
+          <Route path="properties" element={<PropertiesPage />} />
+          <Route path="shared-properties" element={<PropertiesPage />} />
 
           {/* Actions */}
           <Route path="action-types" element={<PlaceholderPage title="Action Types" />} />
