@@ -12,6 +12,7 @@ import {
 import clsx from 'clsx';
 import { useOntologyStore } from '@/hooks/useOntologyStore';
 import { ObjectTypeCard } from '@/components/Discover';
+import { ObjectTypeEditorModal } from './ObjectTypeEditorModal';
 import { Card, Badge, IconBox } from '@/components/common';
 import type { DMOCategory, DMOSource } from '@/types';
 
@@ -29,6 +30,7 @@ export function ObjectTypesPage() {
   const [filterCategory, setFilterCategory] = useState<DMOCategory | 'all'>('all');
   const [filterSource, setFilterSource] = useState<DMOSource | 'all'>('all');
   const [filterGroup, setFilterGroup] = useState<string | 'all'>('all');
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
 
   // Get filter from URL params
   const urlFilter = searchParams.get('filter');
@@ -108,7 +110,7 @@ export function ObjectTypesPage() {
           </p>
         </div>
         <button
-          onClick={() => navigate('/object-types/new')}
+          onClick={() => setIsEditorOpen(true)}
           className="btn btn-primary"
         >
           <Plus className="w-4 h-4" />
@@ -330,6 +332,12 @@ export function ObjectTypesPage() {
           </table>
         </Card>
       )}
+
+      {/* Create Object Type Modal */}
+      <ObjectTypeEditorModal
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+      />
     </div>
   );
 }

@@ -16,6 +16,7 @@ import {
   Sparkles,
   Settings,
   ChevronDown,
+  Lock,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useOntologyStore } from '@/hooks/useOntologyStore';
@@ -26,9 +27,28 @@ interface SidebarItemProps {
   label: string;
   count?: number;
   indent?: boolean;
+  disabled?: boolean;
 }
 
-function SidebarItem({ to, icon, label, count, indent }: SidebarItemProps) {
+function SidebarItem({ to, icon, label, count, indent, disabled }: SidebarItemProps) {
+  if (disabled) {
+    return (
+      <div
+        className={clsx(
+          'sidebar-item opacity-50 cursor-not-allowed',
+          indent && 'ml-4'
+        )}
+        title="Coming soon"
+      >
+        <span className="w-5 h-5 flex items-center justify-center text-ontology-400">
+          {icon}
+        </span>
+        <span className="flex-1 text-ontology-400">{label}</span>
+        <Lock className="w-3 h-3 text-ontology-300" />
+      </div>
+    );
+  }
+
   return (
     <NavLink
       to={to}
@@ -108,11 +128,13 @@ export function Sidebar() {
             to="/proposals"
             icon={<FileEdit className="w-4 h-4" />}
             label="Proposals"
+            disabled
           />
           <SidebarItem
             to="/history"
             icon={<History className="w-4 h-4" />}
             label="History"
+            disabled
           />
         </nav>
 
@@ -134,6 +156,7 @@ export function Sidebar() {
             icon={<Share2 className="w-4 h-4" />}
             label="Shared Properties"
             count={sharedPropertiesCount}
+            disabled
           />
           <SidebarItem
             to="/link-types"
@@ -146,6 +169,7 @@ export function Sidebar() {
             icon={<Zap className="w-4 h-4" />}
             label="Action types"
             count={0}
+            disabled
           />
           <SidebarItem
             to="/groups"
@@ -158,6 +182,7 @@ export function Sidebar() {
             icon={<Layers className="w-4 h-4" />}
             label="Interfaces"
             count={0}
+            disabled
           />
         </SidebarSection>
 
@@ -168,12 +193,14 @@ export function Sidebar() {
             icon={<CircleDot className="w-4 h-4" />}
             label="Value types"
             count={12}
+            disabled
           />
           <SidebarItem
             to="/functions"
             icon={<FunctionSquare className="w-4 h-4" />}
             label="Functions"
             count={0}
+            disabled
           />
         </SidebarSection>
 
@@ -183,29 +210,27 @@ export function Sidebar() {
             to="/health-issues"
             icon={<AlertTriangle className="w-4 h-4" />}
             label="Health issues"
+            disabled
           />
           <SidebarItem
             to="/cleanup"
             icon={<Sparkles className="w-4 h-4" />}
             label="Cleanup"
+            disabled
           />
         </SidebarSection>
       </div>
 
       {/* Bottom Section */}
       <div className="p-4 border-t border-ontology-100">
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            clsx(
-              'sidebar-item',
-              isActive && 'active'
-            )
-          }
+        <div
+          className="sidebar-item opacity-50 cursor-not-allowed"
+          title="Coming soon"
         >
-          <Settings className="w-4 h-4 text-ontology-500" />
-          <span>Ontology configuration</span>
-        </NavLink>
+          <Settings className="w-4 h-4 text-ontology-400" />
+          <span className="text-ontology-400">Ontology configuration</span>
+          <Lock className="w-3 h-3 text-ontology-300" />
+        </div>
       </div>
     </aside>
   );

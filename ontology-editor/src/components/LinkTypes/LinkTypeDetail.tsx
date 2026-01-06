@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Star,
@@ -14,7 +15,8 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useOntologyStore } from '@/hooks/useOntologyStore';
-import { Card, CardBody, CardHeader, Badge, IconBox } from '@/components/common';
+import { Card, CardBody, CardHeader, Badge, IconBox, ConfirmModal } from '@/components/common';
+import { LinkTypeEditorModal } from './LinkTypeEditorModal';
 import { formatDistanceToNow } from 'date-fns';
 
 export function LinkTypeDetail() {
@@ -24,8 +26,13 @@ export function LinkTypeDetail() {
     getLinkTypeById,
     getDMOById,
     toggleLinkTypeFavorite,
+    deleteLinkType,
+    addLinkType,
     groups,
   } = useOntologyStore();
+
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const linkType = getLinkTypeById(id || '');
 
@@ -113,15 +120,35 @@ export function LinkTypeDetail() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <button className="btn btn-secondary">
+          <button
+            onClick={() => setIsEditorOpen(true)}
+            className="btn btn-secondary"
+          >
             <Edit2 className="w-4 h-4" />
             <span>Edit</span>
           </button>
-          <button className="btn btn-secondary">
+          <button
+            onClick={() => {
+              const duplicatedLinkType = {
+                ...linkType,
+                id: `link-${Date.now()}`,
+                name: `${linkType.name}_copy`,
+                displayName: `${linkType.displayName} (Copy)`,
+                createdAt: new Date().toISOString(),
+                lastModified: new Date().toISOString(),
+              };
+              addLinkType(duplicatedLinkType);
+              navigate(`/link-types/${duplicatedLinkType.id}`);
+            }}
+            className="btn btn-secondary"
+          >
             <Copy className="w-4 h-4" />
             <span>Duplicate</span>
           </button>
-          <button className="btn btn-secondary text-red-600 hover:text-red-700 hover:bg-red-50">
+          <button
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="btn btn-secondary text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -502,6 +529,27 @@ RETURN t`}
           </Card>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      <LinkTypeEditorModal
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        linkType={linkType}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={() => {
+          deleteLinkType(linkType.id);
+          navigate('/link-types');
+        }}
+        title="Delete Link Type"
+        message={`Are you sure you want to delete "${linkType.displayName}"? This action cannot be undone and will remove all relationship data.`}
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

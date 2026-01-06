@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Star,
@@ -12,7 +13,8 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useOntologyStore } from '@/hooks/useOntologyStore';
-import { Card, CardBody, CardHeader, Badge, IconBox } from '@/components/common';
+import { Card, CardBody, CardHeader, Badge, IconBox, ConfirmModal } from '@/components/common';
+import { ObjectTypeEditorModal } from './ObjectTypeEditorModal';
 import { formatDistanceToNow } from 'date-fns';
 
 export function ObjectTypeDetail() {
@@ -21,10 +23,15 @@ export function ObjectTypeDetail() {
   const {
     getDMOById,
     toggleDMOFavorite,
+    deleteDMO,
+    addDMO,
     linkTypes,
     groups,
     addToRecentlyViewed,
   } = useOntologyStore();
+
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const dmo = getDMOById(id || '');
 
@@ -118,15 +125,35 @@ export function ObjectTypeDetail() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <button className="btn btn-secondary">
+          <button
+            onClick={() => setIsEditorOpen(true)}
+            className="btn btn-secondary"
+          >
             <Edit2 className="w-4 h-4" />
             <span>Edit</span>
           </button>
-          <button className="btn btn-secondary">
+          <button
+            onClick={() => {
+              const duplicatedDMO = {
+                ...dmo,
+                id: `dmo-${Date.now()}`,
+                name: `${dmo.name}_copy`,
+                displayName: `${dmo.displayName} (Copy)`,
+                createdAt: new Date().toISOString(),
+                lastModified: new Date().toISOString(),
+              };
+              addDMO(duplicatedDMO);
+              navigate(`/object-types/${duplicatedDMO.id}`);
+            }}
+            className="btn btn-secondary"
+          >
             <Copy className="w-4 h-4" />
             <span>Duplicate</span>
           </button>
-          <button className="btn btn-secondary text-red-600 hover:text-red-700 hover:bg-red-50">
+          <button
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="btn btn-secondary text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -477,6 +504,27 @@ export function ObjectTypeDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      <ObjectTypeEditorModal
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        objectType={dmo}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={() => {
+          deleteDMO(dmo.id);
+          navigate('/object-types');
+        }}
+        title="Delete Object Type"
+        message={`Are you sure you want to delete "${dmo.displayName}"? This action cannot be undone and will remove all associated properties.`}
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   );
 }
