@@ -8,13 +8,12 @@ import {
   Plus,
   Star,
   TrendingUp,
-  ChevronDown,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useOntologyStore } from '@/hooks/useOntologyStore';
 import { ObjectTypeCard } from '@/components/Discover';
 import { Card, Badge, IconBox } from '@/components/common';
-import type { DMO, DMOCategory, DMOSource } from '@/types';
+import type { DMOCategory, DMOSource } from '@/types';
 
 type ViewMode = 'grid' | 'list';
 type SortBy = 'name' | 'objectCount' | 'lastModified';

@@ -1,7 +1,6 @@
 import * as LucideIcons from 'lucide-react';
+import type { LucideIcon as LucideIconType } from 'lucide-react';
 import clsx from 'clsx';
-
-type IconName = keyof typeof LucideIcons;
 
 interface IconProps {
   name: string;
@@ -12,7 +11,8 @@ interface IconProps {
 
 export function Icon({ name, className, size = 16, color }: IconProps) {
   // Try to get the icon from Lucide
-  const LucideIcon = (LucideIcons as Record<string, React.ComponentType<{ className?: string; size?: number; style?: React.CSSProperties }>>)[name];
+  const iconModule = LucideIcons as unknown as Record<string, LucideIconType>;
+  const LucideIcon = iconModule[name];
 
   if (LucideIcon) {
     return (

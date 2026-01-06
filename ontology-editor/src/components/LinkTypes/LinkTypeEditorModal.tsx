@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
   ArrowRight,
-  AlertCircle,
 } from 'lucide-react';
 import { Modal, ModalFooter, IconBox } from '@/components/common';
 import { useOntologyStore } from '@/hooks/useOntologyStore';
-import type { LinkType, LinkCardinality, LinkDirection, Property } from '@/types';
+import type { LinkType, LinkCardinality, LinkDirection } from '@/types';
 
 interface LinkTypeEditorModalProps {
   isOpen: boolean;

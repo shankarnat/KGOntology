@@ -12,7 +12,7 @@ interface GroupCardProps {
 
 export function GroupCard({ group, showPreview = true }: GroupCardProps) {
   const navigate = useNavigate();
-  const { toggleGroupFavorite, getDMOsByGroup, dmos } = useOntologyStore();
+  const { toggleGroupFavorite, dmos } = useOntologyStore();
 
   const handleClick = () => {
     navigate(`/groups/${group.id}`);

@@ -194,7 +194,7 @@ export function CustomizeModal({ isOpen, onClose }: CustomizeModalProps) {
 
         {/* Section List */}
         <div className="space-y-2">
-          {sections.map((section, index) => (
+          {sections.map((section) => (
             <div
               key={section.id}
               className={clsx(

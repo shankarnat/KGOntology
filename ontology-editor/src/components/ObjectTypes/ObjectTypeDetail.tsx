@@ -1,13 +1,10 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft,
   Star,
   Edit2,
   Trash2,
   Copy,
-  MoreHorizontal,
   Link2,
-  Database,
   List,
   Settings,
   ChevronRight,

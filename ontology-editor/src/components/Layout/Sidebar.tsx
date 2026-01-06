@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
   Compass,
   FileEdit,
@@ -71,7 +71,6 @@ function SidebarSection({ title, children }: SidebarSectionProps) {
 
 export function Sidebar() {
   const { dmos, linkTypes, groups } = useOntologyStore();
-  const location = useLocation();
 
   // Calculate stats
   const sharedPropertiesCount = dmos.reduce(

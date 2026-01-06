@@ -6,7 +6,6 @@ import {
   Filter,
   ChevronDown,
   ChevronRight,
-  Database,
   Key,
   Hash,
   Type,
@@ -15,15 +14,16 @@ import {
   List as ListIcon,
   Braces,
   Link2,
+  LayoutList,
+  LayoutGrid,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useOntologyStore } from '@/hooks/useOntologyStore';
 import { Card, Badge, IconBox } from '@/components/common';
 import { PropertyEditorModal } from './PropertyEditorModal';
-import type { Property, PropertyDataType, DMO } from '@/types';
+import type { Property, PropertyDataType } from '@/types';
 
-type SortBy = 'name' | 'dataType' | 'objectType';
-type GroupBy = 'none' | 'objectType' | 'dataType';
+type ViewMode = 'byObjectType' | 'flat';
 
 // Icon mapping for data types
 const dataTypeIcons: Record<PropertyDataType, React.ReactNode> = {
@@ -71,12 +71,10 @@ export function PropertiesPage() {
   const { dmos } = useOntologyStore();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortBy>('name');
-  const [groupBy, setGroupBy] = useState<GroupBy>('none');
+  const [viewMode, setViewMode] = useState<ViewMode>('byObjectType');
   const [filterDataType, setFilterDataType] = useState<PropertyDataType | 'all'>('all');
   const [filterRequired, setFilterRequired] = useState<'all' | 'required' | 'optional'>('all');
-  const [filterIndexed, setFilterIndexed] = useState<'all' | 'indexed' | 'not-indexed'>('all');
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [expandedObjects, setExpandedObjects] = useState<Set<string>>(new Set(dmos.map(d => d.id)));
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<PropertyWithContext | null>(null);
   const [selectedObjectType, setSelectedObjectType] = useState<string | null>(null);
@@ -98,7 +96,7 @@ export function PropertiesPage() {
     return properties;
   }, [dmos]);
 
-  // Filter and sort properties
+  // Filter properties
   const filteredProperties = useMemo(() => {
     let result = [...allProperties];
 
@@ -126,61 +124,53 @@ export function PropertiesPage() {
       result = result.filter(p => !p.required);
     }
 
-    // Indexed filter
-    if (filterIndexed === 'indexed') {
-      result = result.filter(p => p.indexed);
-    } else if (filterIndexed === 'not-indexed') {
-      result = result.filter(p => !p.indexed);
-    }
-
-    // Sort
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          return a.displayName.localeCompare(b.displayName);
-        case 'dataType':
-          return a.dataType.localeCompare(b.dataType);
-        case 'objectType':
-          return a.objectTypeName.localeCompare(b.objectTypeName);
-        default:
-          return 0;
-      }
-    });
-
     return result;
-  }, [allProperties, searchQuery, sortBy, filterDataType, filterRequired, filterIndexed]);
+  }, [allProperties, searchQuery, filterDataType, filterRequired]);
 
-  // Group properties
-  const groupedProperties = useMemo(() => {
-    if (groupBy === 'none') {
-      return { '': filteredProperties };
-    }
+  // Group properties by object type
+  const propertiesByObjectType = useMemo(() => {
+    const groups: Record<string, { dmo: typeof dmos[0]; properties: PropertyWithContext[] }> = {};
 
-    const groups: Record<string, PropertyWithContext[]> = {};
-    filteredProperties.forEach(prop => {
-      const key = groupBy === 'objectType' ? prop.objectTypeName : prop.dataType;
-      if (!groups[key]) {
-        groups[key] = [];
+    dmos.forEach(dmo => {
+      const dmoProps = filteredProperties.filter(p => p.objectTypeId === dmo.id);
+      if (dmoProps.length > 0 || !searchQuery) {
+        groups[dmo.id] = {
+          dmo,
+          properties: dmoProps,
+        };
       }
-      groups[key].push(prop);
     });
 
     return groups;
-  }, [filteredProperties, groupBy]);
+  }, [dmos, filteredProperties, searchQuery]);
 
-  const toggleGroup = (groupKey: string) => {
-    const newExpanded = new Set(expandedGroups);
-    if (newExpanded.has(groupKey)) {
-      newExpanded.delete(groupKey);
+  const toggleObjectExpansion = (objectId: string) => {
+    const newExpanded = new Set(expandedObjects);
+    if (newExpanded.has(objectId)) {
+      newExpanded.delete(objectId);
     } else {
-      newExpanded.add(groupKey);
+      newExpanded.add(objectId);
     }
-    setExpandedGroups(newExpanded);
+    setExpandedObjects(newExpanded);
+  };
+
+  const expandAll = () => {
+    setExpandedObjects(new Set(dmos.map(d => d.id)));
+  };
+
+  const collapseAll = () => {
+    setExpandedObjects(new Set());
   };
 
   const handleEditProperty = (prop: PropertyWithContext) => {
     setEditingProperty(prop);
     setSelectedObjectType(prop.objectTypeId);
+    setIsEditorOpen(true);
+  };
+
+  const handleAddPropertyToObject = (objectTypeId: string) => {
+    setEditingProperty(null);
+    setSelectedObjectType(objectTypeId);
     setIsEditorOpen(true);
   };
 
@@ -222,25 +212,25 @@ export function PropertiesPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <Card>
+        <Card hoverable={false}>
           <div className="p-4 text-center">
             <div className="text-2xl font-bold text-ontology-900">{stats.total}</div>
             <div className="text-sm text-ontology-500">Total Properties</div>
           </div>
         </Card>
-        <Card>
+        <Card hoverable={false}>
           <div className="p-4 text-center">
             <div className="text-2xl font-bold text-red-600">{stats.required}</div>
             <div className="text-sm text-ontology-500">Required</div>
           </div>
         </Card>
-        <Card>
+        <Card hoverable={false}>
           <div className="p-4 text-center">
             <div className="text-2xl font-bold text-sf-blue-600">{stats.indexed}</div>
             <div className="text-sm text-ontology-500">Indexed</div>
           </div>
         </Card>
-        <Card>
+        <Card hoverable={false}>
           <div className="p-4 text-center">
             <div className="text-2xl font-bold text-green-600">{stats.shared}</div>
             <div className="text-sm text-ontology-500">Shared</div>
@@ -285,42 +275,58 @@ export function PropertiesPage() {
           <option value="optional">Optional</option>
         </select>
 
-        {/* Indexed Filter */}
-        <select
-          value={filterIndexed}
-          onChange={e => setFilterIndexed(e.target.value as typeof filterIndexed)}
-          className="input w-36"
-        >
-          <option value="all">All</option>
-          <option value="indexed">Indexed</option>
-          <option value="not-indexed">Not Indexed</option>
-        </select>
+        {/* View Toggle */}
+        <div className="flex items-center border border-ontology-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setViewMode('byObjectType')}
+            className={clsx(
+              'p-2 flex items-center gap-2 text-sm transition-colors',
+              viewMode === 'byObjectType'
+                ? 'bg-sf-blue-500 text-white'
+                : 'bg-white text-ontology-600 hover:bg-ontology-50'
+            )}
+            title="Group by Object Type"
+          >
+            <LayoutGrid className="w-4 h-4" />
+            <span className="hidden sm:inline">By Object</span>
+          </button>
+          <button
+            onClick={() => setViewMode('flat')}
+            className={clsx(
+              'p-2 flex items-center gap-2 text-sm transition-colors',
+              viewMode === 'flat'
+                ? 'bg-sf-blue-500 text-white'
+                : 'bg-white text-ontology-600 hover:bg-ontology-50'
+            )}
+            title="Flat List"
+          >
+            <LayoutList className="w-4 h-4" />
+            <span className="hidden sm:inline">Flat</span>
+          </button>
+        </div>
 
-        {/* Group By */}
-        <select
-          value={groupBy}
-          onChange={e => setGroupBy(e.target.value as GroupBy)}
-          className="input w-40"
-        >
-          <option value="none">No Grouping</option>
-          <option value="objectType">Group by Object Type</option>
-          <option value="dataType">Group by Data Type</option>
-        </select>
-
-        {/* Sort By */}
-        <select
-          value={sortBy}
-          onChange={e => setSortBy(e.target.value as SortBy)}
-          className="input w-36"
-        >
-          <option value="name">Sort by Name</option>
-          <option value="dataType">Sort by Type</option>
-          <option value="objectType">Sort by Object</option>
-        </select>
+        {/* Expand/Collapse All (only in grouped view) */}
+        {viewMode === 'byObjectType' && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={expandAll}
+              className="text-sm text-sf-blue-600 hover:text-sf-blue-700"
+            >
+              Expand All
+            </button>
+            <span className="text-ontology-300">|</span>
+            <button
+              onClick={collapseAll}
+              className="text-sm text-sf-blue-600 hover:text-sf-blue-700"
+            >
+              Collapse All
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Results */}
-      {filteredProperties.length === 0 ? (
+      {filteredProperties.length === 0 && searchQuery ? (
         <div className="text-center py-16">
           <Filter className="w-12 h-12 text-ontology-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-ontology-700 mb-2">
@@ -330,136 +336,217 @@ export function PropertiesPage() {
             Try adjusting your search or filters
           </p>
         </div>
-      ) : (
-        <Card className="overflow-hidden">
-          {Object.entries(groupedProperties).map(([groupKey, properties]) => (
-            <div key={groupKey || 'ungrouped'}>
-              {/* Group Header */}
-              {groupBy !== 'none' && (
-                <button
-                  onClick={() => toggleGroup(groupKey)}
-                  className="w-full flex items-center gap-3 px-4 py-3 bg-ontology-50 border-b border-ontology-200 hover:bg-ontology-100 transition-colors"
-                >
-                  {expandedGroups.has(groupKey) || expandedGroups.size === 0 ? (
-                    <ChevronDown className="w-4 h-4 text-ontology-500" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-ontology-500" />
-                  )}
-                  {groupBy === 'dataType' && (
-                    <span
-                      className="w-6 h-6 rounded flex items-center justify-center"
-                      style={{ backgroundColor: `${dataTypeColors[groupKey as PropertyDataType]}15`, color: dataTypeColors[groupKey as PropertyDataType] }}
-                    >
-                      {dataTypeIcons[groupKey as PropertyDataType]}
+      ) : viewMode === 'byObjectType' ? (
+        /* Grouped by Object Type View */
+        <div className="space-y-4">
+          {Object.entries(propertiesByObjectType).map(([objectId, { dmo, properties }]) => (
+            <Card key={objectId} className="overflow-hidden">
+              {/* Object Type Header */}
+              <button
+                onClick={() => toggleObjectExpansion(objectId)}
+                className="w-full flex items-center gap-4 px-4 py-3 bg-ontology-50 hover:bg-ontology-100 transition-colors"
+              >
+                {expandedObjects.has(objectId) ? (
+                  <ChevronDown className="w-5 h-5 text-ontology-500" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 text-ontology-500" />
+                )}
+                <IconBox name={dmo.icon} color={dmo.color} size="sm" />
+                <div className="flex-1 text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-ontology-900">
+                      {dmo.displayName}
                     </span>
-                  )}
-                  <span className="font-semibold text-ontology-900">{groupKey}</span>
-                  <Badge variant="gray">{properties.length}</Badge>
+                    <Badge variant="gray">{properties.length} properties</Badge>
+                    {dmo.source !== 'standard' && (
+                      <Badge variant={dmo.source === 'custom' ? 'purple' : 'blue'}>
+                        {dmo.source}
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="text-xs text-ontology-500">{dmo.name}</span>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddPropertyToObject(objectId);
+                  }}
+                  className="px-3 py-1 text-sm text-sf-blue-600 hover:text-sf-blue-700 hover:bg-sf-blue-50 rounded transition-colors"
+                >
+                  + Add Property
                 </button>
-              )}
+              </button>
 
-              {/* Properties Table */}
-              {(groupBy === 'none' || expandedGroups.has(groupKey) || expandedGroups.size === 0) && (
-                <table className="w-full">
-                  {groupBy === 'none' && (
-                    <thead>
-                      <tr className="bg-ontology-50 border-b border-ontology-200">
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-ontology-600 uppercase">
-                          Property
-                        </th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-ontology-600 uppercase">
-                          Object Type
-                        </th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-ontology-600 uppercase">
-                          Data Type
-                        </th>
-                        <th className="text-center px-4 py-3 text-xs font-semibold text-ontology-600 uppercase">
-                          Constraints
-                        </th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-ontology-600 uppercase">
-                          Description
-                        </th>
-                      </tr>
-                    </thead>
-                  )}
-                  <tbody>
-                    {properties.map((prop, idx) => (
-                      <tr
-                        key={`${prop.objectTypeId}-${prop.id}-${idx}`}
+              {/* Properties List */}
+              {expandedObjects.has(objectId) && (
+                <div className="divide-y divide-ontology-100">
+                  {properties.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-ontology-500">
+                      <p>No properties match your filters</p>
+                    </div>
+                  ) : (
+                    properties.map((prop, idx) => (
+                      <div
+                        key={`${prop.id}-${idx}`}
                         onClick={() => handleEditProperty(prop)}
-                        className="border-b border-ontology-100 hover:bg-ontology-50 cursor-pointer transition-colors"
+                        className="flex items-center gap-4 px-4 py-3 hover:bg-ontology-50 cursor-pointer transition-colors"
                       >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <span
-                              className="w-8 h-8 rounded flex items-center justify-center"
-                              style={{
-                                backgroundColor: `${dataTypeColors[prop.dataType]}15`,
-                                color: dataTypeColors[prop.dataType]
-                              }}
-                            >
-                              {dataTypeIcons[prop.dataType]}
+                        {/* Data Type Icon */}
+                        <span
+                          className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0"
+                          style={{
+                            backgroundColor: `${dataTypeColors[prop.dataType]}15`,
+                            color: dataTypeColors[prop.dataType]
+                          }}
+                        >
+                          {dataTypeIcons[prop.dataType]}
+                        </span>
+
+                        {/* Property Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-ontology-900">
+                              {prop.displayName}
                             </span>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-ontology-900">
-                                  {prop.displayName}
-                                </span>
-                                {prop.unique && <Key className="w-3 h-3 text-purple-500" />}
-                              </div>
-                              <span className="text-xs text-ontology-500 font-mono">
-                                {prop.name}
-                              </span>
-                            </div>
+                            {prop.unique && <span title="Unique"><Key className="w-3 h-3 text-purple-500" /></span>}
                           </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div
-                            className="flex items-center gap-2 cursor-pointer hover:underline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/object-types/${prop.objectTypeId}`);
-                            }}
-                          >
-                            <IconBox name={prop.objectTypeIcon} color={prop.objectTypeColor} size="sm" />
-                            <span className="text-sm text-ontology-700">
-                              {prop.objectTypeName}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant="custom" color={dataTypeColors[prop.dataType]}>
-                            {prop.dataType}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-1">
-                            {prop.required && (
-                              <Badge variant="red">Required</Badge>
-                            )}
-                            {prop.indexed && (
-                              <Badge variant="blue">Indexed</Badge>
-                            )}
-                            {prop.unique && (
-                              <Badge variant="purple">Unique</Badge>
-                            )}
-                            {prop.isShared && (
-                              <Badge variant="green">Shared</Badge>
+                          <div className="flex items-center gap-2 text-xs text-ontology-500">
+                            <span className="font-mono">{prop.name}</span>
+                            {prop.description && (
+                              <>
+                                <span>•</span>
+                                <span className="truncate">{prop.description}</span>
+                              </>
                             )}
                           </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-sm text-ontology-600 line-clamp-1">
-                            {prop.description}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+
+                        {/* Data Type */}
+                        <Badge variant="custom" color={dataTypeColors[prop.dataType]}>
+                          {prop.dataType}
+                        </Badge>
+
+                        {/* Constraints */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {prop.required && (
+                            <Badge variant="red">Required</Badge>
+                          )}
+                          {prop.indexed && (
+                            <Badge variant="blue">Indexed</Badge>
+                          )}
+                          {prop.unique && (
+                            <Badge variant="purple">Unique</Badge>
+                          )}
+                          {prop.isShared && (
+                            <Badge variant="green">Shared</Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               )}
-            </div>
+            </Card>
           ))}
+        </div>
+      ) : (
+        /* Flat List View */
+        <Card className="overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-ontology-50 border-b border-ontology-200">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-ontology-600 uppercase">
+                  Property
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-ontology-600 uppercase">
+                  Object Type
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-ontology-600 uppercase">
+                  Data Type
+                </th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-ontology-600 uppercase">
+                  Constraints
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-ontology-600 uppercase">
+                  Description
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredProperties.map((prop, idx) => (
+                <tr
+                  key={`${prop.objectTypeId}-${prop.id}-${idx}`}
+                  onClick={() => handleEditProperty(prop)}
+                  className="border-b border-ontology-100 hover:bg-ontology-50 cursor-pointer transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="w-8 h-8 rounded flex items-center justify-center"
+                        style={{
+                          backgroundColor: `${dataTypeColors[prop.dataType]}15`,
+                          color: dataTypeColors[prop.dataType]
+                        }}
+                      >
+                        {dataTypeIcons[prop.dataType]}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-ontology-900">
+                            {prop.displayName}
+                          </span>
+                          {prop.unique && <Key className="w-3 h-3 text-purple-500" />}
+                        </div>
+                        <span className="text-xs text-ontology-500 font-mono">
+                          {prop.name}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div
+                      className="flex items-center gap-2 cursor-pointer hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/object-types/${prop.objectTypeId}`);
+                      }}
+                    >
+                      <IconBox name={prop.objectTypeIcon} color={prop.objectTypeColor} size="sm" />
+                      <span className="text-sm text-ontology-700">
+                        {prop.objectTypeName}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant="custom" color={dataTypeColors[prop.dataType]}>
+                      {prop.dataType}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-1">
+                      {prop.required && (
+                        <Badge variant="red">Required</Badge>
+                      )}
+                      {prop.indexed && (
+                        <Badge variant="blue">Indexed</Badge>
+                      )}
+                      {prop.unique && (
+                        <Badge variant="purple">Unique</Badge>
+                      )}
+                      {prop.isShared && (
+                        <Badge variant="green">Shared</Badge>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-ontology-600 line-clamp-1">
+                      {prop.description}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </Card>
       )}
 

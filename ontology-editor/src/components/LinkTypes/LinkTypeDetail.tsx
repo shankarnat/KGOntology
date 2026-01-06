@@ -11,7 +11,6 @@ import {
   List,
   Settings,
   Link2,
-  GitBranch,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useOntologyStore } from '@/hooks/useOntologyStore';
